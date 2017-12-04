@@ -1,23 +1,37 @@
+clc;
+close all;
+
+global n_y;
+global n_u;
+global epsilon;
+
 load('sys.mat')
 
-A
-B_y
-b_u
-b_y_out
-u
-y_out
+A;
+B_y;
+b_u = b_u(:);
+b_y_out = b_y_out(:);
+u = u(:);
+y_out = y_out(:);
+
+
 
 n_y = size(A,1);
+n_u = 1;
+epsilon = 0.01;
 
-M = zeros(n_y*N);
+k = 0;
+y0 = 0.5 * ones(1, n_y);
+
+
+
+M = zeros(n_y*N, n_y*(N+1));
 b = zeros(n_y*N,1);
 
 % assemble system matrix
 for i = 1:N
-    M((i-1)*n_y+1:i*n_y,(i-1)*n_y+1:i*n_y) = A;
-end
-for i = 2:N
-    M((i-1)*n_y+1:i*n_y,(i-2)*n_y+1:(i-1)*n_y) = -B_y;
+    M((i-1)*n_y+1:i*n_y,i*n_y+1:(i+1)*n_y) = A;
+    M((i-1)*n_y+1:i*n_y,(i-1)*n_y+1:i*n_y) = -B_y;
 end
 
 % assemble rhs
@@ -29,7 +43,33 @@ end
 y = M \ b;
 
 ys = [];
-for i = 1:N
+for i = 1:N+1
     ys = [ys; y((i-1)*n_y+1:i*n_y)'];
 end
-ys
+
+N = 10;
+L = 100;
+
+y_out = zeros(N+L,1);
+for i = 1:N+L
+    y_out(i) = 0.5 + 0.3 * sin(0.1 * i);
+end
+
+y_cl = [y0];
+for j = 1:L
+    [u_ol, y_ol] = ocp_full_discretization(k, N, y0, A, B_y, b_u, b_y_out, y_out(j:j+N));
+    
+    y0 = y_ol(2,:);
+    
+    y_cl = [y_cl; y0];
+end
+
+for i = 1:L
+    plot([0.25 0.75], [0.35 0.35], 'r'); hold on;
+    plot([0.25 0.75], [0.65 0.65], 'r');
+    plot(1/(2*n_y):1/n_y:1, y_cl(i,:), 'k');
+    axis([0 1 0 1])
+    
+    
+    hold off;
+end

@@ -11,10 +11,10 @@ set_log_level(WARNING)
 
 # Prepare a mesh
 #mesh = UnitSquareMesh(10,10)
-mesh = UnitIntervalMesh(50)
+mesh = UnitIntervalMesh(100)
 
 # Choose a time step size
-k = Constant(1e-1)
+k = Constant(1e-2)
 
 # MPC horizon length
 N = 10
@@ -61,6 +61,41 @@ def output_matrices(us, y_outs):
 
     scipy.io.savemat('sys.mat', {'A': A.array(), 'B_y': B_y.array(), 'b_u': b_u.array(), 'b_y_out': b_y_out.array(),
                                  'N': N, 'u': us, 'y_out': y_outs})
+
+    # find number of degrees of freedom
+    n_y = len(A.array()[0])
+
+    M = np.zeros((n_y * N, n_y * N))
+    b = np.zeros(n_y * N)
+
+    for i in range(0,N):
+        M[i*n_y:(i+1)*n_y, i*n_y:(i+1)*n_y] = A.array()
+
+    for i in range(1,N):
+        M[i*n_y:(i+1)*n_y, (i-1)*n_y:i*n_y] = - B_y.array()
+
+    for i in range(0,N):
+        b[i*n_y:(i+1)*n_y] = b_u * us[i] + b_y_out * y_outs[i]
+
+    scipy.io.savemat('M.mat', {'M': M})
+
+    return M, b_u, b_y_out
+
+
+def J(z):
+    """ The cost functional """
+
+
+    pass
+
+def c(z, ):
+    """ The equation for the PDE
+
+        Let (y,u) = z
+
+        The the (discretized) version of the PDE is given by
+            M * y = b_u * u + b_y_out * y_out
+    """
 
 
 def solve_forward(us, y_outs, record=False):
