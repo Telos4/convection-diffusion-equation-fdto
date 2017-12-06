@@ -37,11 +37,7 @@ b = [];
 % set option to use derivative information
 options = optimset('Algorithm', 'interior-point', 'GradObj', 'on', 'Hessian', ...
    'user-supplied', 'HessFcn', @(z,lambda)hessian_objective(z,lambda,N), ...
-   'Display', 'on');
-
-% options = optimset('Algorithm', 'interior-point', 'GradObj', 'on', ...
-%     'Display', 'on');
-
+   'Display', 'off');
 
 tic
 % run optimization
@@ -65,8 +61,7 @@ function [J, gradJ, hessJ] = objective(k, N, z)
     global n_u;
     J = 0;
     gradJ = zeros(size(z));
-    %hessJ = eye(2*N);
-    
+
     for j = 0:N-1
         yj = z(j*n_y+1:(j+1)*n_y);
         uj = z((N+1)*n_y+j*n_u+1:(N+1)*n_y+(j+1)*n_u);
@@ -86,18 +81,16 @@ end
 % The system dynamic is defined as an equality constraint for the 
 % optimization problem.
 % The matrix looks like this:
-% A =   [ 1  1  -1 ...                          ]
-%       [    0   1   1  -1 ...                  ]
-%       [            0   1   1  -1 ...          ]
-%       [                   ...                 ]
-%       [                        1   1  -1   0  ]
+% A_eq =   [ -B_y    A                     b_u              ]
+%          [      -B_y    A                    b_u          ]
+%          [                 ...                    ...     ]
+%          [                   -B_y    A                b_u ]
 % The rhs vector contains the following entries:
-% b = [    w0   ]   % x1 for initial condition
-%     [    w1   ]
-%     [    w2   ]
-%     [    ...  ]
-%     [    wN-1 ]
-function [Aeq, beq] = assemble_eq_constraints(N, A, B_y, b_u, b_y_out, y_outs)
+% b_eq = [    b_y_out * y_out(0)   ]
+%        [    b_y_out * y_out(2)   ]
+%        [           ...           ]
+%        [    b_y_out * y_out(N-1) ]
+function [Aeq, beq] = assemble_eq_constraints(N, A, B_y, b_u, b_y_out, y_out)
     global n_y;
     global n_u;
 
@@ -113,7 +106,7 @@ function [Aeq, beq] = assemble_eq_constraints(N, A, B_y, b_u, b_y_out, y_outs)
     % rhs is time varying data and initial value of x0
     beq = zeros(N * n_y, 1);
     for i = 1:N
-        beq((i-1)*n_y+1:i*n_y) = b_y_out * y_outs(i);
+        beq((i-1)*n_y+1:i*n_y) = b_y_out * y_out(i);
     end
 end
 
@@ -140,6 +133,6 @@ function [lb, ub] = assemble_state_control_constraints(k, N, y0)
     end
 
     % constraints for the control
-    lb((N+1)*n_y+1:(N+1)*n_y+N*n_u) = -2;
-    ub((N+1)*n_y+1:(N+1)*n_y+N*n_u) = 2;
+    lb((N+1)*n_y+1:(N+1)*n_y+N*n_u) = 0.25;
+    ub((N+1)*n_y+1:(N+1)*n_y+N*n_u) = 0.75;
 end

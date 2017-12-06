@@ -10,7 +10,6 @@ from collections import OrderedDict
 set_log_level(WARNING)
 
 # Prepare a mesh
-#mesh = UnitSquareMesh(10,10)
 mesh = UnitIntervalMesh(100)
 
 # Choose a time step size
@@ -20,8 +19,9 @@ k = Constant(1e-2)
 N = 10
 
 # boundary heat conductivity parameters
-alpha = Constant(1.0e3)
-beta = Constant(1.0e3)
+alpha = Constant(1.0)
+beta = Constant(1.0)
+gamma = Constant(1.0e3)
 
 # Compile sub domains for boundaries
 left = CompiledSubDomain("near(x[0], 0.)")
@@ -33,7 +33,7 @@ left.mark(boundary_parts, 0)    # boundary part where control is applied
 right.mark(boundary_parts, 1)   # boundary part for outside temperature
 ds = Measure("ds", subdomain_data=boundary_parts)
 
-def output_matrices(us, y_outs):
+def output_matrices():
     # Define function space
     U = FunctionSpace(mesh, "Lagrange", 1)
 
@@ -46,12 +46,12 @@ def output_matrices(us, y_outs):
     y_out = Constant(1.0)
 
     # Define variational formulation
-    a = (y / k * v + inner(grad(y), grad(v))) * dx + alpha * y * v * ds
+    a = (y / k * v + alpha * inner(grad(y), grad(v))) * dx + alpha * gamma/beta * y * v * ds
     f_y = y0 / k * v * dx
 
-    f_u = beta * u * v * ds(0)
+    f_u = alpha * gamma/beta * u * v * ds(0)
 
-    f_y_out = beta * y_out * v * ds(1)
+    f_y_out = alpha * gamma/beta * y_out * v * ds(1)
 
     A = assemble(a)
     B_y = assemble(f_y)
@@ -59,43 +59,11 @@ def output_matrices(us, y_outs):
     b_u = assemble(f_u)
     b_y_out = assemble(f_y_out)
 
+    # output matrices for use in matlab optimization
     scipy.io.savemat('sys.mat', {'A': A.array(), 'B_y': B_y.array(), 'b_u': b_u.array(), 'b_y_out': b_y_out.array(),
                                  'N': N, 'u': us, 'y_out': y_outs})
 
-    # find number of degrees of freedom
-    n_y = len(A.array()[0])
-
-    M = np.zeros((n_y * N, n_y * N))
-    b = np.zeros(n_y * N)
-
-    for i in range(0,N):
-        M[i*n_y:(i+1)*n_y, i*n_y:(i+1)*n_y] = A.array()
-
-    for i in range(1,N):
-        M[i*n_y:(i+1)*n_y, (i-1)*n_y:i*n_y] = - B_y.array()
-
-    for i in range(0,N):
-        b[i*n_y:(i+1)*n_y] = b_u * us[i] + b_y_out * y_outs[i]
-
-    scipy.io.savemat('M.mat', {'M': M})
-
-    return M, b_u, b_y_out
-
-
-def J(z):
-    """ The cost functional """
-
-
-    pass
-
-def c(z, ):
-    """ The equation for the PDE
-
-        Let (y,u) = z
-
-        The the (discretized) version of the PDE is given by
-            M * y = b_u * u + b_y_out * y_out
-    """
+    return b_u, b_y_out
 
 
 def solve_forward(us, y_outs, record=False):
@@ -156,108 +124,10 @@ def solve_forward(us, y_outs, record=False):
     return y, ys, y_omegas
 
 
-# Callback function for the optimizer
-# Writes intermediate results to a logfile
-def eval_cb(j, ms):
-    """ The callback function keeping a log """
-
-    for m in ms:
-        print("m = %15.10e " % float(m))
-    print("objective = %15.10e " % j)
-
-
-# Prepare the objective function
-def objective(times, y):
-    """ The objective """
-
-    y_ref = Constant(0.5)
-    #combined = zip(times, observations)
-    #area = times[-1] - times[0]
-    #M = len(times)
-    #I = area / M * sum(inner(y - y_obs, y - y_obs) * ds(1) * dt[t]
-    #                   for (t, y_obs) in combined)
-    I = sum(inner(y-y_ref,y-y_ref) * dx * dt[t]
-            for t in times)
-
-    return I
-
-
-def optimize(dbg=False):
-    """ The optimization routine """
-
-    # Define the control
-    #us = [Constant(float(i)) for i in range(0,10)]
-    #us = [0.0, 1.0, 1.0, 2.0, 2.0, 2.0, 3.0, 3.0, 3.0, 3.0, 4.0, 4.0, 4.0, 4.0, 4.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0]
-    us = OrderedDict()
-    i = 0
-    while i < N:
-        us[i] = Constant(1.0)
-        i += 1
-
-    #source = Source(us, degree=3, name="source")
-
-    # provide the coefficient on which this expression depends and its derivative
-    #source.dependencies = us
-    #source.user_defined_derivatives = {}
-    #for u in us:
-    #    source.user_defined_derivatives[u] = Source(us, Source=source, derivative=us, degree=3)
-    #source.user_defined_derivatives = {us: Source(us, Source=source, derivative=us, degree=3)}
-
-    # Execute first time to annotate and record the tape
-    y,  ys, y_omegas = solve_forward(us, record=False, annotate=False)
-
-    p, ps = solve_adjoint(ys, y_omegas)
-
-    if dbg:
-        # Check the recorded tape
-        success = replay_dolfin(tol=0.0, stop=True)
-        print("replay: ", success)
-
-        # for the equations recorded on the forward run
-        adj_html("forward.html", "forward")
-        # for the equations to be assembled on the adjoint run
-        adj_html("adjoint.html", "adjoint")
-
-    # Load references
-    #refs = np.loadtxt("recorded.txt")
-
-    # create noise to references
-    # gamma = 1.e-5
-    # if gamma > 0:
-    #     noise = np.random.normal(0, gamma, refs.shape[0])
-    #
-    #     # add noise to the refs
-    #     refs += noise
-    #
-    # # map refs to be constant
-    # refs = list(map(Constant, refs))
-
-    # Define the control
-    controls = [Control(u) for (t,u) in us.items()]
-
-    Jform = objective(times, y)
-    J = Functional(Jform)
-
-    # compute the gradient
-    dJd0 = compute_gradient(J, controls)
-    #for elem in dJd0:
-    #    print("gradient = ", float(elem))
-
-    # Prepare the reduced functional
-    reduced_functional = ReducedFunctional(J, controls, eval_cb_post=eval_cb)
-
-    # Run the optimisation
-    omega_opt = minimize(reduced_functional, method="L-BFGS-B", \
-                         tol=1.0e-12, options={"disp": True, "gtol": 1.0e-12})
-
-    # Print the obtained optimal value for the controls
-    print("omega = %f" % float(omega_opt))
-
-
 if __name__ == "__main__":
     us = np.array([0.1 * (i+1) for i in range(0,N)])
     y_outs = np.array([1.0 - 0.1 * (i+1) for i in range(0,N)])
 
-    output_matrices(us, y_outs)
+    output_matrices()
 
     solve_forward(us, y_outs)
