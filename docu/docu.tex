@@ -171,9 +171,9 @@ The problem is solved by the First-Discretize-Then-Optimize-Approach.
 We replace $y$ by its finite element approximations $y_{h,k}$ for each time point $t = k \Delta t, k \in \{0, \hdots, N\}$. Let $y_h = (y_{h,0}, \hdots, y_{h,N})$, $u = (u_0, \hdots, u_{N-1})$ and $y_{out} = (y_{out,0}, \hdots, y_{out,N-1})$.
 We end up with a finite dimensional optimal control problem which reads:
 \begin{align*}
-& \min_{y_h,u} J(y_h, u) = \sum_{k=0}^{N-1} \frac{\varepsilon}{2} (y_{h,k} - y_{\Omega,k})^T Q (y_{h,k} - y_{\Omega,k}) + \frac{1}{2} (u_k - u_{ref,k})^T R (u_k - u_{ref,k}) \\ 
+& \min_{y_h,u} J(y_h, u) = \sum_{k=0}^{N-1} \left( \frac{\varepsilon}{2} (y_{h,k} - y_{\Omega,k})^T Q (y_{h,k} - y_{\Omega,k}) + \frac{1}{2} (u_k - u_{ref,k})^T R (u_k - u_{ref,k}) \right) \\ 
 & + \frac{\varepsilon}{2} (y_{h,N} - y_{\Omega,N})^T Q (y_{h,N} - y_{\Omega,N}) \\
-\text{s.t. }  & A y_{k+1,h} = B_y y_{h,k} + b_u u_k + b_{y,out} y_{out,k} \text{ for } k \in \{0, \hdots, N-1\} \\
+\text{s.t. }  & A y_{h,k+1} = B_y y_{h,k} + b_u u_k + b_{y,out} y_{out,k} \text{ for } k \in \{0, \hdots, N-1\} \\
 &\underline{y}_{h,k,i} \leq y_{h,k,i} \leq \overline{y}_{h,k,i} \text{ for } k \in \{0, \hdots, N\}, i \in \mathcal{I}_{\Omega_y} \\
 &\underline{u}_{k} \leq u_{k} \leq \overline{u}_{k} \text{ for } k \in \{0, \hdots, N-1\}
 \end{align*}
@@ -188,10 +188,10 @@ where
 \begin{equation}
 A_{eq} =
 \underbrace{\begin{pmatrix}
--B_y & A & & & & & b_u & & \\
-& - B_y & A & & & & & b_u & \\
+-B_y & A & & & & & -b_u & & \\
+& - B_y & A & & & & & -b_u & \\
 & & & \ddots & & & & & \ddots \\
-& & & & -B_y & A & & & & b_u
+& & & & -B_y & A & & & & -b_u
 \end{pmatrix}}_{
 \in \mathbb{R}^{N n_y \times n_z}}
 \end{equation}
