@@ -198,14 +198,14 @@ A_{eq} =
 \begin{equation}
 b_{eq} = 
 \underbrace{\begin{pmatrix}
-b_{y,out} & & & \\
-& b_{y,out} & &  \\
+b_{y,out}*y_{out,1} & & & \\
+& b_{y,out}*y_{out,2} & &  \\
 & & \ddots & \\
-& & & b_{y,out}
+& & & b_{y,out}*y_{out,N}
 \end{pmatrix}}_{
 \in \mathbb{R}^{N n_y \times N}
 }
- y_{out} \in \mathbb{R}^{N n_y}
+  \in \mathbb{R}^{N n_y}
 \end{equation}
 where $n_y$ and $n_u$ denote the dimensions of $y_{h,k}$ and $u_k$, respectively.
 Note that this is a sparse linear system and should be treated accordingly (i.e. only allocate memory for nonzero matrix entries).
