@@ -1,4 +1,4 @@
-function [lb, ub] = bounds(n_y)
+function [lb, ub] = bounds(k, n_y)
     %lb = -10 * ones(n_y, 1);
     %ub = 10 * ones(n_y, 1);
        

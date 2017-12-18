@@ -127,7 +127,7 @@ function [lb, ub] = assemble_state_control_constraints(k, N, y0)
     
     % constraints for state
     for i = 2:N+1
-        [lb_y, ub_y] = bounds(n_y);
+        [lb_y, ub_y] = bounds(k, n_y);
         lb(n_y * (i-1)+1:n_y*i) = lb_y;
         ub(n_y * (i-1)+1:n_y*i) = ub_y;
     end
