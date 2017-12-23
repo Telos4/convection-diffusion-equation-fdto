@@ -17,15 +17,15 @@
 
 using namespace std;
 
-class MATRIXOP
-{
+class MATRIXOP {
 public:
 
     MATRIXOP();
-    MATRIXOP(int N_, string file_A, string file_B, string file_b_u, string file_b_y);
+    MATRIXOP(int N_, string file_A, string file_B, string file_b_u, string file_b_y,
+            double eps_, double y_ref_, double u_ref_);
 
 
-  /** Default destructor */
+    /** Default destructor */
     ~MATRIXOP();
 
     void read_matrix(string filename, valarray<int> &rows, valarray<int> &cols, valarray<double> &vals);
@@ -33,11 +33,25 @@ public:
     void print_matrix(valarray<int> &rows, valarray<int> &cols, valarray<double> &vals) const;
     void print_vector(valarray<double> &vals) const;
 
+    double eval_f(valarray<double> &x);
+    double vec_Q_vec(valarray<double> y, double y_ref);
+    double vec_R_vec(valarray<double> y, double y_ref);
 
+    valarray<double> eval_grad_f(valarray<double> z);
+    valarray<double> Q_vec(valarray<double> y);
+    valarray<double> R_vec(valarray<double> u);
 
-    valarray<int> A_rows, A_cols, B_rows, B_cols;
-    valarray<double> A_vals, B_vals, b_u, b_y;
+    void A_eq();
+    valarray<double> matrix_vektor_mult(valarray<int> &rows,
+        valarray<int> &cols, valarray<double> &vals, valarray<double> &vec);
+    
+    
+    
+    
+    valarray<int> A_rows, A_cols, B_rows, B_cols, A_eq_rows, A_eq_cols;
+    valarray<double> A_vals, B_vals, A_eq_vals, b_u, b_y;
     int n_y, n_u, n_z, N;
+    double eps, y_ref, u_ref;
 private:
 
 
