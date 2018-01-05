@@ -4,7 +4,6 @@
  *  Created on: Dec 3, 2017
  *      Author: martin
  */
-//Zum testen von matrixop
 
 //#include "IpIpoptApplication.hpp"
 #include "heat_nlp.hpp"
@@ -16,35 +15,35 @@ using namespace Ipopt;
 
 int main(int argv, char* argc[]) {
     /*
-             valarray<int> a,b;
-             valarray<double> c, d;
-             MATRIXOP m;
-             m.read_matrix("A_test.mtx", a, b, c);
-             m.print_matrix(a ,b, c);
+    valarray<int> a,b;
+    valarray<double> c, d;
+    MATRIXOP m;
+    m.read_matrix("A_test.mtx", a, b, c);
+    m.print_matrix(a ,b, c);
 
-             m.read_vector("testvector", d);
-             m.print_vector(d);
+    m.read_vector("testvector", d);
+    m.print_vector(d);
 
-             MATRIXOP first(101, "A.mtx", "B_y.mtx", "b_u.txt", "b_y_out.txt");
-             first.print_matrix(first.A_rows, first.A_cols, first.A_vals);
-             first.print_matrix(first.B_rows, first.B_cols, first.B_vals);
-             first.print_vector(first.b_u);
-             first.print_vector(first.b_y);
+    MATRIXOP first(101, "A.mtx", "B_y.mtx", "b_u.txt", "b_y_out.txt");
+    first.print_matrix(first.A_rows, first.A_cols, first.A_vals);
+    first.print_matrix(first.B_rows, first.B_cols, first.B_vals);
+    first.print_vector(first.b_u);
+    first.print_vector(first.b_y);
      */
     /*
-        MATRIXOP second(2, "A_small.mtx", "B_y_small.mtx", "b_u_small.txt", "b_y_out_small.txt", 1, 0, 0);
-        valarray<double> ones(second.n_z);
-        for(int i = 0; i < second.n_z; ++i){
-            ones[i] = 1;
-        }
-        valarray<double> eval = second.eval_grad_f(ones);
-    
-        second.print_vector(eval);
-    
-        cout << "z: " << second.n_z << " n_u: " << second.n_u << " n_y: " << second.n_y << endl;
-    
-        double f = second.eval_f(ones);
-        cout << "eval f: " << f << endl;
+    MATRIXOP second(2, "A_small.mtx", "B_y_small.mtx", "b_u_small.txt", "b_y_out_small.txt", 1, 0, 0);
+    valarray<double> ones(second.n_z);
+    for(int i = 0; i < second.n_z; ++i){
+        ones[i] = 1;
+    }
+    valarray<double> eval = second.eval_grad_f(ones);
+
+    second.print_vector(eval);
+
+    cout << "z: " << second.n_z << " n_u: " << second.n_u << " n_y: " << second.n_y << endl;
+
+    double f = second.eval_f(ones);
+    cout << "eval f: " << f << endl;
      */
     /*
        MATRIXOP third(2, "A_small.mtx", "B_y_small.mtx", "b_u_small.txt", "b_y_out_small.txt", 1, 0, 0);
@@ -54,7 +53,8 @@ int main(int argv, char* argc[]) {
 
     // Create a new instance of your nlp
     //  (use a SmartPtr, not raw)
-    SmartPtr<TNLP> mynlp = new HEAT_NLP();
+    //SmartPtr<TNLP> mynlp = new HEAT_NLP(1, "A_small.mtx", "B_y_small.mtx", "b_u_small.txt", "b_y_out_small.txt", 10e-3, 0.5, 0.5);
+    SmartPtr<TNLP> mynlp = new HEAT_NLP(10, "A.mtx", "B_y.mtx", "b_u.txt", "b_y_out.txt", 10e-3, 0.5, 0.5);
 
     // Create a new instance of IpoptApplication
     //  (use a SmartPtr, not raw)
@@ -64,11 +64,15 @@ int main(int argv, char* argc[]) {
     app->RethrowNonIpoptException(true);
 
     // Change some options
-    // Note: The following choices are only examples, they might not be
-    //       suitable for your optimization problem.
-    app->Options()->SetNumericValue("tol", 1e-7);
-    app->Options()->SetStringValue("mu_strategy", "adaptive");
+    int wat = 4;
+    //app->Options()->SetStringValue("derivative_test", "second-order");
+    app->Options()->SetNumericValue("max_iter", 10);
+    app->Options()->SetNumericValue("tol", 1e-5);
+    //app->Options()->SetStringValue("mu_strategy", "adaptive");
     app->Options()->SetStringValue("output_file", "ipopt.out");
+    app->Options()->SetStringValue("jac_c_constant", "yes");
+    app->Options()->SetStringValue("jac_d_constant", "yes");
+    app->Options()->SetStringValue("hessian_constant", "yes");
 
     // The following overwrites the default name (ipopt.opt) of the
     // options file
@@ -97,4 +101,6 @@ int main(int argv, char* argc[]) {
     // be deleted.
 
     return (int) status;
+
+
 }
