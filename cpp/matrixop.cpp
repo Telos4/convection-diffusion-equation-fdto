@@ -20,7 +20,7 @@ MATRIXOP::MATRIXOP(int N_, string file_A, string file_B, string file_b_u, string
     read_matrix(file_B, B_rows, B_cols, B_vals);
     read_vector(file_b_u, b_u);
     read_vector(file_b_y, b_y);
-
+   
     N = N_;
 
     n_y = b_u.size();
@@ -49,6 +49,7 @@ void MATRIXOP::read_matrix(string filename, valarray<int> &rows, valarray<int> &
 
     if (ifs.is_open()) {
         int n, i = 0;
+        //third value in file is size
         ifs >> n >> n >> n;
         rows.resize(n);
         cols.resize(n);
@@ -57,6 +58,7 @@ void MATRIXOP::read_matrix(string filename, valarray<int> &rows, valarray<int> &
         while (ifs >> rows[i] >> cols[i] >> vals[i]) {
             ++i;
         }
+        //counting in file starts at 1
         for (int i = 0; i < n; ++i) {
             rows[i] -= 1;
             cols[i] -= 1;
@@ -157,7 +159,7 @@ valarray<double> MATRIXOP::Q_vec(valarray<double> y) {
 }
 
 valarray<double> MATRIXOP::R_vec(valarray<double> u) {
-    valarray<double> re = u;
+    valarray<double> re(u.size);
 
     for (int i = 0; i < u.size(); ++i) {
         re[i] = u[i] - u_ref;
@@ -168,7 +170,9 @@ valarray<double> MATRIXOP::R_vec(valarray<double> u) {
 //parameters have size (data.B_rows.size() + data.A_rows.size() + data.b_u.size()) * data.N
 
 void MATRIXOP::A_eq() {
-    int size_A_eq = (B_rows.size() + A_rows.size() + b_u.size()) * N;
+    long size_A_eq = (B_rows.size() + A_rows.size() + b_u.size()) * N;
+    long size_B = B_rows.size();
+    long size_A = A_rows.size();
     A_eq_rows.resize(size_A_eq);
     A_eq_cols.resize(size_A_eq);
     A_eq_vals.resize(size_A_eq);
@@ -178,15 +182,16 @@ void MATRIXOP::A_eq() {
         int countA = 0;
         int countB = 0;
         for (int k = 0; k < n_y; ++k) {
-            while (B_rows[countB] == k) {
+            while (countB != size_B && B_rows[countB] == k) {
                 A_eq_rows[count] = i * n_y + k;
                 A_eq_cols[count] = i * n_y + B_cols[countB];
                 A_eq_vals[count] = -1 * B_vals[countB];
                 ++count;
                 ++countB;
+
             }
 
-            while (A_rows[countA] == k) {
+            while (countA != size_A && A_rows[countA] == k) {
                 A_eq_rows[count] = i * n_y + k;
                 A_eq_cols[count] = (i + 1) * n_y + A_cols[countA];
                 A_eq_vals[count] = A_vals[countA];
@@ -200,18 +205,21 @@ void MATRIXOP::A_eq() {
             ++count;
         }
     }
+    cout << endl;
 }
 
 valarray<double> MATRIXOP::matrix_vektor_mult(valarray<int> &rows,
         valarray<int> &cols, valarray<double> &vals, valarray<double> &vec){
+    long size_matrix = rows.size();
     valarray<double> re(N * n_y);
     int iter = 0;
     for (int i = 0; i < N * n_y; ++i) {
         double sum = 0;
-        while (rows[iter] == i){
+        while (iter < size_matrix && rows[iter] == i){
             sum += vals[iter] * vec[cols[iter]];
             ++iter;
         }
         re[i] = sum; 
     }
+    return re;
 }
