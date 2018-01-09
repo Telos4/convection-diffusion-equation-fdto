@@ -21,12 +21,12 @@ MATRIXOP::MATRIXOP(int N_, string file_A, string file_B, string file_b_u, string
     read_vector(file_b_u, b_u);
     read_vector(file_b_y, b_y);
    
-    N = N_;
+    N = N_; 
 
     n_y = b_u.size();
 
     n_u = 1;
-
+ 
     n_z = (N + 1) * n_y + N*n_u;
 
     eps = eps_;
@@ -159,7 +159,7 @@ valarray<double> MATRIXOP::Q_vec(valarray<double> y) {
 }
 
 valarray<double> MATRIXOP::R_vec(valarray<double> u) {
-    valarray<double> re(u.size);
+    valarray<double> re(u.size());
 
     for (int i = 0; i < u.size(); ++i) {
         re[i] = u[i] - u_ref;

@@ -53,7 +53,7 @@ int main(int argv, char* argc[]) {
 
     // Create a new instance of your nlp
     //  (use a SmartPtr, not raw)
-    //SmartPtr<TNLP> mynlp = new HEAT_NLP(1, "A_small.mtx", "B_y_small.mtx", "b_u_small.txt", "b_y_out_small.txt", 10e-3, 0.5, 0.5);
+    //SmartPtr<TNLP> mynlp = new HEAT_NLP(2, "A_small.mtx", "B_y_small.mtx", "b_u_small.txt", "b_y_out_small.txt", 10e-3, 0.5, 0.5);
     SmartPtr<TNLP> mynlp = new HEAT_NLP(10, "A.mtx", "B_y.mtx", "b_u.txt", "b_y_out.txt", 10e-3, 0.5, 0.5);
 
     // Create a new instance of IpoptApplication
