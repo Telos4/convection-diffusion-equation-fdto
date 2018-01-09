@@ -23,7 +23,6 @@ HEAT_NLP::HEAT_NLP() {
 HEAT_NLP::~HEAT_NLP() {
 }
 
-
 HEAT_NLP::HEAT_NLP(int N_, string file_A, string file_B, string file_b_u, string file_b_y,
         double eps, double y_ref, double u_ref)
 : data(N_, file_A, file_B, file_b_u, file_b_y, eps, y_ref, u_ref) {
@@ -52,30 +51,42 @@ bool HEAT_NLP::get_bounds_info(Index n, Number* x_l, Number* x_u,
     double y_lower = 0.35;
     double inf = 1e19;
     Index left = (int) (data.n_y / 4);
-    Index right = (int) (data.n_y * 3 / 4);
+    //Index right = (int) (data.n_y * 3 / 4);
+
     
-    for(Index k = 0; k < data.N + 1; ++k){
+        //initial value, testing
+        for (Index i = 0; i < data.n_y; ++i) {
+            x_u[i] = 0.5;
+            x_l[i] = 0.5;
+        }
+        for (Index i = (data.N + 1) * data.n_y; i < (data.N + 1) * data.n_y + data.n_u; ++i) {
+            x_u[i] = 0.5;
+            x_l[i] = 0.5;
+        }
+     
+
+    for (Index k = 1; k < data.N + 1; ++k) {
         //bound for y left, right
         for (Index i = 0; i < left; ++i) {
-            x_u[k* data.n_y + i] = x_u[(k+1) * data.n_y - i - 1] = inf;
-            x_l[k* data.n_y + i] = x_l[(k+1) * data.n_y - i - 1] = -inf;
+            x_u[k * data.n_y + i] = x_u[(k + 1) * data.n_y - i - 1] = inf;
+            x_l[k * data.n_y + i] = x_l[(k + 1) * data.n_y - i - 1] = -inf;
         }
 
         //bound for y center
         for (Index i = left; i < data.n_y - left + 1; ++i) {
-            x_u[k* data.n_y + i] = y_upper;
-            x_l[k* data.n_y + i] = y_lower;
+            x_u[k * data.n_y + i] = y_upper;
+            x_l[k * data.n_y + i] = y_lower;
         }
-/*
-        //bound for y right
-        for (Index i = right; i < data.n_y; ++i) {
-            x_u[k* data.n_y + i] = inf;
-            x_l[k* data.n_y + i] = -inf;
-        }
-*/
+        /*
+                //bound for y right
+                for (Index i = right; i < data.n_y; ++i) {
+                    x_u[k * data.n_y + i] = inf;
+                    x_l[k * data.n_y + i] = -inf;
+                }
+         */
     }
     //bound for u
-    for (Index i = (data.N + 1) * data.n_y; i < data.n_z; ++i) {
+    for (Index i = (data.N + 1) * data.n_y + data.n_u; i < data.n_z; ++i) {
         x_u[i] = u_upper;
         x_l[i] = u_lower;
     }
@@ -83,7 +94,7 @@ bool HEAT_NLP::get_bounds_info(Index n, Number* x_l, Number* x_u,
     //equality constraints for g
     for (Index i = 0; i < data.N; ++i) {
         for (Index k = 0; k < data.n_y; ++k) {
-            g_u[data.N * i + k] = g_l[data.N * i + k] = data.b_y[k] * eval_y_out(i);
+            g_u[data.n_y * i + k] = g_l[data.n_y * i + k] = data.b_y[k] * eval_y_out(i);
         }
     }
     return true;
@@ -92,7 +103,7 @@ bool HEAT_NLP::get_bounds_info(Index n, Number* x_l, Number* x_u,
 //where to put this function?
 
 double eval_y_out(int i) {
-    return 0.5 + 1./3 * sin(0.1 * i);
+    return 0.5 + 1. / 3 * sin(0.1 * i);
 }
 
 bool HEAT_NLP::get_starting_point(Index n, bool init_x, Number* x,
@@ -149,7 +160,7 @@ bool HEAT_NLP::eval_g(Index n, const Number* x, bool new_x,
     //data.print_vector(z);
     //cout << endl;
     //data.print_vector(eval);
-    
+    assert(data.N *data.n_y == m);
     for (int i = 0; i < data.N * data.n_y; ++i) {
         g[i] = eval[i];
     }
@@ -161,6 +172,9 @@ bool HEAT_NLP::eval_jac_g(Index n, const Number* x, bool new_x,
         Index *jCol, Number * values) {
 
     int size_A_eq = (data.B_rows.size() + data.A_rows.size() + data.b_u.size()) * data.N;
+    
+    assert(nele_jac == size_A_eq);
+    
     if (values == NULL) {
         for (int i = 0; i < size_A_eq; ++i) {
             iRow[i] = data.A_eq_rows[i];
@@ -179,6 +193,7 @@ bool HEAT_NLP::eval_h(Index n, const Number* x, bool new_x,
         Number obj_factor, Index m, const Number* lambda,
         bool new_lambda, Index nele_hess,
         Index* iRow, Index* jCol, Number * values) {
+    assert(data.n_z == n);
     if (values == NULL) {
         for (int i = 0; i < data.n_z; ++i) {
             iRow[i] = i;
