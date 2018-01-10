@@ -201,7 +201,7 @@ void MATRIXOP::A_eq() {
 
             A_eq_rows[count] = i * n_y + k;
             A_eq_cols[count] = (N + 1) * n_y + i;
-            A_eq_vals[count] = b_u[k];
+            A_eq_vals[count] = -b_u[k];
             ++count;
         }
     }
