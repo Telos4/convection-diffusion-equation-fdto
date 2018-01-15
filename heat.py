@@ -30,8 +30,8 @@ right = CompiledSubDomain("near(x[0], 1.)")
 
 # Label boundaries, required for the objective
 boundary_parts = MeshFunction("size_t", mesh, mesh.topology().dim() - 1)
-left.mark(boundary_parts, 0)    # boundary part where control is applied
-right.mark(boundary_parts, 1)   # boundary part for outside temperature
+left.mark(boundary_parts, 0)    # boundary part for outside temperature
+right.mark(boundary_parts, 1)   # boundary part where control is applied
 ds = Measure("ds", subdomain_data=boundary_parts)
 
 def output_matrices():
@@ -50,9 +50,9 @@ def output_matrices():
     a = (y / k * v + alpha * inner(grad(y), grad(v))) * dx + alpha * gamma/beta * y * v * ds
     f_y = y0 / k * v * dx
 
-    f_u = alpha * gamma/beta * u * v * ds(1)
-
     f_y_out = alpha * gamma/beta * y_out * v * ds(0)
+
+    f_u = alpha * gamma / beta * u * v * ds(1)
 
     A = assemble(a)
     B_y = assemble(f_y)
@@ -68,7 +68,7 @@ def output_matrices():
 
 class MyExpression0(Expression):
     def eval(self, value, x):
-        value[0] = 0.25
+        value[0] = 0.0
 
     def value_shape(self):
         return (1,)
@@ -140,9 +140,9 @@ if __name__ == "__main__":
     
     output_matrices()
 
-    #L = 200
+    L = 200
 
-    #us = np.array([0.5 for i in range(0,L)])
-    #y_outs = np.array([0.5 + 1.0/3.0 * sin(i/10.0) for i in range(0,L)])
+    us = np.array([0.5 for i in range(0,L)])
+    y_outs = np.array([0.5 + 1.0/3.0 * sin(i/10.0) for i in range(0,L)])
 
-    #solve_forward(us, y_outs)
+    solve_forward(us, y_outs)

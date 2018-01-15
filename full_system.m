@@ -36,7 +36,7 @@ for j = 1:L
     
     y0 = y_ol(2,:);
     
-    y_cl = [y_cl; y0];
+    y_cl = [y_cl; fliplr(y0)];
 end
 
 v = VideoWriter('heat.avi');
