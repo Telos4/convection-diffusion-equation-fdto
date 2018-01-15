@@ -32,9 +32,28 @@ MATRIXOP::MATRIXOP(int N_, string file_A, string file_B, string file_b_u, string
     eps = eps_;
     y_ref = y_ref_;
     u_ref = u_ref_;
+    
+    iter = 0;
 
     A_eq();
+    
+    y_old.resize((N+1)*n_y);
+    u_old.resize(N*n_u);
+    
+    for(int i = 0; i < (N+1)*n_y; ++i){
+        y_old[i] = 0.5;
+    }
+    for(int i = 0; i < N*n_u; ++i){
+        u_old[i] = 0.5;
+    }
+    
+    //delete old results
+    ofstream del1("solution_y.txt", ofstream::trunc);
+    ofstream del2("solution_u.txt", ofstream::trunc);
+    del1.close();
+    del2.close();
 }
+
 
 //destructor
 
@@ -48,7 +67,9 @@ void MATRIXOP::read_matrix(string filename, valarray<int> &rows, valarray<int> &
     ifstream ifs(filename.c_str(), ifstream::in);
 
     if (ifs.is_open()) {
-        int n, i = 0;
+	//skip comments in .mtx files 
+
+	int n, i = 0;
         //third value in file is size
         ifs >> n >> n >> n;
         rows.resize(n);

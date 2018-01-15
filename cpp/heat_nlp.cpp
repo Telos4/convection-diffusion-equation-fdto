@@ -15,17 +15,24 @@ double eval_y_out(int i);
 
 // constructor
 
-HEAT_NLP::HEAT_NLP() {
-}
+//HEAT_NLP::HEAT_NLP() {
+//}
 
 //destructor
 
 HEAT_NLP::~HEAT_NLP() {
 }
 
+/*
 HEAT_NLP::HEAT_NLP(int N_, string file_A, string file_B, string file_b_u, string file_b_y,
         double eps, double y_ref, double u_ref)
 : data(N_, file_A, file_B, file_b_u, file_b_y, eps, y_ref, u_ref) {
+}
+ */
+
+HEAT_NLP::HEAT_NLP(MATRIXOP &data_)
+: data(data_) {
+
 }
 
 bool HEAT_NLP::get_nlp_info(Index& n, Index& m, Index& nnz_jac_g,
@@ -53,17 +60,13 @@ bool HEAT_NLP::get_bounds_info(Index n, Number* x_l, Number* x_u,
     Index left = (int) (data.n_y / 4);
     //Index right = (int) (data.n_y * 3 / 4);
 
-    
-        //initial value, testing
-        for (Index i = 0; i < data.n_y; ++i) {
-            x_u[i] = 0.5;
-            x_l[i] = 0.5;
-        }
-        for (Index i = (data.N + 1) * data.n_y; i < (data.N + 1) * data.n_y + data.n_u; ++i) {
-            x_u[i] = 0.5;
-            x_l[i] = 0.5;
-        }
-     
+
+    //initial value, testing
+    for (Index i = 0; i < data.n_y; ++i) {
+        x_u[i] = data.y_old[data.n_y + i];
+        x_l[i] = data.y_old[data.n_y + i];
+    }
+
 
     for (Index k = 1; k < data.N + 1; ++k) {
         //bound for y left, right
@@ -86,7 +89,7 @@ bool HEAT_NLP::get_bounds_info(Index n, Number* x_l, Number* x_u,
          */
     }
     //bound for u
-    for (Index i = (data.N + 1) * data.n_y + data.n_u; i < data.n_z; ++i) {
+    for (Index i = (data.N + 1) * data.n_y; i < data.n_z; ++i) {
         x_u[i] = u_upper;
         x_l[i] = u_lower;
     }
@@ -94,7 +97,7 @@ bool HEAT_NLP::get_bounds_info(Index n, Number* x_l, Number* x_u,
     //equality constraints for g
     for (Index i = 0; i < data.N; ++i) {
         for (Index k = 0; k < data.n_y; ++k) {
-            g_u[data.n_y * i + k] = g_l[data.n_y * i + k] = data.b_y[k] * eval_y_out(i);
+            g_u[data.n_y * i + k] = g_l[data.n_y * i + k] = data.b_y[k] * eval_y_out(data.iter + i);
         }
     }
     return true;
@@ -103,8 +106,9 @@ bool HEAT_NLP::get_bounds_info(Index n, Number* x_l, Number* x_u,
 //where to put this function?
 
 double eval_y_out(int i) {
-    return 0.5 + 1. / 3 * sin(0.1 * i);
+    return 0.5 +  0.3* sin(0.1 * i);
 }
+//Lösung vom letzten
 
 bool HEAT_NLP::get_starting_point(Index n, bool init_x, Number* x,
         bool init_z, Number* z_L, Number* z_U,
@@ -114,8 +118,21 @@ bool HEAT_NLP::get_starting_point(Index n, bool init_x, Number* x,
     assert(init_z == false);
     assert(init_lambda == false);
 
-    for (Index i = 0; i < n; ++i) {
-        x[i] = 0.5;
+    //use the shifted solution from the previous solution, 
+    //for the uninitialized values use the last known value y_old[data.N*data.n_y - 1]
+    for (int i = 0; i < data.N * data.n_y; ++i) {
+        x[i] = data.y_old[data.n_y + i];
+    }
+    for (int i = data.N * data.n_y; i < (data.N + 1) * data.n_y; ++i) {
+        x[i] = data.y_old[data.N * data.n_y - 1];
+    }
+
+    //wrong for 2 dimensions
+    for (int i = 0; i < data.N * data.n_u - 1; ++i) {
+        x[(data.N + 1) * data.n_y + i] = data.u_old[i + 1];
+    }
+    for (int i = data.N * data.n_u - 1; i < data.N * data.n_u; ++i) {
+        x[(data.N + 1) * data.n_y + i] = data.u_old[data.N * data.n_u - 1];
     }
 
     return true;
@@ -133,6 +150,7 @@ bool HEAT_NLP::eval_f(Index n, const Number* x, bool new_x, Number & obj_value) 
     obj_value = data.eval_f(z);
     return true;
 }
+//valarray Konstruktor mit Pointer
 
 bool HEAT_NLP::eval_grad_f(Index n, const Number* x, bool new_x,
         Number * grad_f) {
@@ -160,7 +178,7 @@ bool HEAT_NLP::eval_g(Index n, const Number* x, bool new_x,
     //data.print_vector(z);
     //cout << endl;
     //data.print_vector(eval);
-    assert(data.N *data.n_y == m);
+    assert(data.N * data.n_y == m);
     for (int i = 0; i < data.N * data.n_y; ++i) {
         g[i] = eval[i];
     }
@@ -172,9 +190,9 @@ bool HEAT_NLP::eval_jac_g(Index n, const Number* x, bool new_x,
         Index *jCol, Number * values) {
 
     int size_A_eq = (data.B_rows.size() + data.A_rows.size() + data.b_u.size()) * data.N;
-    
+
     assert(nele_jac == size_A_eq);
-    
+
     if (values == NULL) {
         for (int i = 0; i < size_A_eq; ++i) {
             iRow[i] = data.A_eq_rows[i];
@@ -217,17 +235,38 @@ void HEAT_NLP::finalize_solution(SolverReturn status,
         Number obj_value,
         const IpoptData* ip_data,
         IpoptCalculatedQuantities * ip_cq) {
-    // here is where we would store the solution to variables, or write to a file, etc
-    // so we could use the solution.
-    ofstream ofs_y("solution_y.txt");
-    ofstream ofs_u("solution_u.txt");
 
+    //count for outer loop
+    ++data.iter;
+    
+    for (int i = 0; i < (data.N + 1) * data.n_y; ++i) {
+        data.y_old[i] = x[i];
+    }
+    for (int i = 0; i < data.N * data.n_u; ++i) {
+        data.u_old[i] = x[(data.N + 1) * data.n_y + i];
+    }
+
+    ofstream ofs_y("solution_y.txt", ofstream::app);
+    ofstream ofs_u("solution_u.txt", ofstream::app);
+
+    /*
     for (int i = 0; i < (data.N + 1) * data.n_y; ++i) {
         ofs_y << x[i] << endl;
     }
     for (int i = (data.N + 1) * data.n_y; i < data.n_z; ++i) {
         ofs_u << x[i] << endl;
     }
+     */
+    for (int i = 0; i < data.n_y; ++i) {
+        ofs_y << x[data.n_y + i] << " ";
+    }
+    ofs_y << endl;
+    
+    for (int i = 0; i < data.n_u; ++i) {
+        ofs_u << x[(data.N+1)*data.n_y + i] << " ";
+    }
+    ofs_u << endl;
+
     ofs_y.close();
     ofs_u.close();
 }

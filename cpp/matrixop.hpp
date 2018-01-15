@@ -49,8 +49,8 @@ public:
     
     
     valarray<int> A_rows, A_cols, B_rows, B_cols, A_eq_rows, A_eq_cols;
-    valarray<double> A_vals, B_vals, A_eq_vals, b_u, b_y;
-    int n_y, n_u, n_z, N;
+    valarray<double> A_vals, B_vals, A_eq_vals, b_u, b_y, y_old, u_old;
+    int n_y, n_u, n_z, N, iter;
     double eps, y_ref, u_ref;
 private:
 

@@ -18,10 +18,10 @@ using namespace Ipopt;
 class HEAT_NLP : public TNLP {
 public:
 
-    HEAT_NLP();
-    HEAT_NLP(int N_, string file_A, string file_B, string file_b_u, string file_b_y,
-        double eps, double y_ref, double u_ref);
-
+    //HEAT_NLP();
+    //HEAT_NLP(int N_, string file_A, string file_B, string file_b_u, string file_b_y,
+    //    double eps, double y_ref, double u_ref);
+    HEAT_NLP(MATRIXOP &data_);    
 
     /** Default destructor */
     virtual ~HEAT_NLP();
@@ -124,7 +124,7 @@ private:
     //@}
 
 
-    MATRIXOP data;
+    MATRIXOP & data;
 };
 
 

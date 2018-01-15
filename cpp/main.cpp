@@ -14,6 +14,63 @@
 using namespace Ipopt;
 
 int main(int argv, char* argc[]) {
+
+    int steps = 5;
+    MATRIXOP data1(10, "A.mtx", "B_y.mtx", "b_u.txt", "b_y_out.txt", 10e-3, 0.5, 0.5);
+    //MATRIXOP data2(1, "A_small.mtx", "B_y_small.mtx", "b_u_small.txt", "b_y_out_small.txt", 10e-3, 0.5, 0.5);
+
+    //outer loop
+    for (int i = 0; i < steps; ++i) {
+        SmartPtr<TNLP> mynlp = new HEAT_NLP(data1);
+
+        SmartPtr<IpoptApplication> app = IpoptApplicationFactory();
+        app->RethrowNonIpoptException(true);
+
+        // Change some options
+        //app->Options()->SetStringValue("derivative_test", "second-order");
+        //app->Options()->SetNumericValue("max_iter", 100);
+        app->Options()->SetNumericValue("tol", 1e-5);
+        //app->Options()->SetStringValue("output_file", "ipopt.out");
+        app->Options()->SetNumericValue("print_level", (int)0);
+        app->Options()->SetStringValue("jac_c_constant", "yes");
+        app->Options()->SetStringValue("jac_d_constant", "yes");
+        app->Options()->SetStringValue("hessian_constant", "yes");
+
+        // The following overwrites the default name (ipopt.opt) of the
+        // options file
+        // app->Options()->SetStringValue("option_file_name", "hs071.opt");
+
+        // Initialize the IpoptApplication and process the options
+        ApplicationReturnStatus status;
+        status = app->Initialize();
+        if (status != Solve_Succeeded) {
+            std::cout << std::endl << std::endl << "*** Error during initialization!" << std::endl;
+            return (int) status;
+        }
+
+        // Ask Ipopt to solve the problem
+        status = app->OptimizeTNLP(mynlp);
+
+        if (status == Solve_Succeeded) {
+            std::cout << "Step: " << i << " *** The problem solved!" << std::endl;
+        }
+        else {
+            std::cout << std::endl << std::endl << "*** The problem FAILED!" << std::endl;
+            return (int) status;
+        }
+    }
+
+    cout << endl << endl << "maybe this works" << endl;
+    return 0;
+
+
+
+
+
+
+
+
+    //function tests
     /*
     valarray<int> a,b;
     valarray<double> c, d;
@@ -49,58 +106,4 @@ int main(int argv, char* argc[]) {
        MATRIXOP third(2, "A_small.mtx", "B_y_small.mtx", "b_u_small.txt", "b_y_out_small.txt", 1, 0, 0);
        third.print_matrix(third.A_eq_rows, third.A_eq_cols, third.A_eq_vals);
      */
-
-
-    // Create a new instance of your nlp
-    //  (use a SmartPtr, not raw)
-    //SmartPtr<TNLP> mynlp = new HEAT_NLP(2, "A_small.mtx", "B_y_small.mtx", "b_u_small.txt", "b_y_out_small.txt", 10e-3, 0.5, 0.5);
-    SmartPtr<TNLP> mynlp = new HEAT_NLP(10, "A.mtx", "B_y.mtx", "b_u.txt", "b_y_out.txt", 10e-3, 0.5, 0.5);
-
-    // Create a new instance of IpoptApplication
-    //  (use a SmartPtr, not raw)
-    // We are using the factory, since this allows us to compile this
-    // example with an Ipopt Windows DLL
-    SmartPtr<IpoptApplication> app = IpoptApplicationFactory();
-    app->RethrowNonIpoptException(true);
-
-    // Change some options
-    int wat = 4;
-    //app->Options()->SetStringValue("derivative_test", "second-order");
-    app->Options()->SetNumericValue("max_iter", 10);
-    app->Options()->SetNumericValue("tol", 1e-5);
-    //app->Options()->SetStringValue("mu_strategy", "adaptive");
-    app->Options()->SetStringValue("output_file", "ipopt.out");
-    app->Options()->SetStringValue("jac_c_constant", "yes");
-    app->Options()->SetStringValue("jac_d_constant", "yes");
-    app->Options()->SetStringValue("hessian_constant", "yes");
-
-    // The following overwrites the default name (ipopt.opt) of the
-    // options file
-    // app->Options()->SetStringValue("option_file_name", "hs071.opt");
-
-    // Initialize the IpoptApplication and process the options
-    ApplicationReturnStatus status;
-    status = app->Initialize();
-    if (status != Solve_Succeeded) {
-        std::cout << std::endl << std::endl << "*** Error during initialization!" << std::endl;
-        return (int) status;
-    }
-
-    // Ask Ipopt to solve the problem
-    status = app->OptimizeTNLP(mynlp);
-
-    if (status == Solve_Succeeded) {
-        std::cout << std::endl << std::endl << "*** The problem solved!" << std::endl;
-    }
-    else {
-        std::cout << std::endl << std::endl << "*** The problem FAILED!" << std::endl;
-    }
-
-    // As the SmartPtrs go out of scope, the reference count
-    // will be decremented and the objects will automatically
-    // be deleted.
-
-    return (int) status;
-
-
 }
