@@ -36,6 +36,8 @@ ds = Measure("ds", subdomain_data=boundary_parts)
 
 def output_matrices():
     # Define function space
+    parameters.linear_algebra_backend = "Eigen"
+
     U = FunctionSpace(mesh, "Lagrange", 1)
 
     # Define test and trial functions
@@ -61,8 +63,28 @@ def output_matrices():
     b_y_out = assemble(f_y_out)
 
     # output matrices for use in matlab optimization
-    scipy.io.savemat('sys.mat', {'A': A.array(), 'B_y': B_y.array(), 'b_u': b_u.array(), 'b_y_out': b_y_out.array(),
-                                 })
+    #scipy.io.savemat('sys.mat', {'A': A.array(), 'B_y': B_y.array(), 'b_u': b_u.array(), 'b_y_out': b_y_out.array(),})
+    #scipy.io.mmwrite('A.mtx', A.matrix())
+
+    A_re = as_backend_type(A).sparray()
+    scipy.io.mmwrite("A.mtx", A_re, symmetry="general")
+
+    B_y_re = as_backend_type(B_y).sparray()
+    scipy.io.mmwrite("B_y.mtx", B_y_re, symmetry="general")
+
+    b_u_re = b_u.array()
+    b_u_file = open("b_u.txt", "w")
+    b_u_file.write(str(len(b_u_re)) + "\n")
+    for val in b_u_re:
+        b_u_file.write(str(val) + "\n")
+    b_u_file.close()
+
+    b_y_out_re = b_y_out.array()
+    b_y_out_file = open("b_y_out.txt", "w")
+    b_y_out_file.write(str(len(b_y_out_re)) + "\n")
+    for val in b_y_out_re:
+        b_y_out_file.write(str(val) + "\n")
+    b_y_out_file.close()
 
     return b_u, b_y_out
 
@@ -137,12 +159,11 @@ def solve_forward(us, y_outs, record=False):
 
 
 if __name__ == "__main__":
-    
     output_matrices()
 
-    L = 200
-
-    us = np.array([0.5 for i in range(0,L)])
-    y_outs = np.array([0.5 + 1.0/3.0 * sin(i/10.0) for i in range(0,L)])
-
-    solve_forward(us, y_outs)
+    # L = 200
+    #
+    # us = np.array([0.5 for i in range(0,L)])
+    # y_outs = np.array([0.5 + 1.0/3.0 * sin(i/10.0) for i in range(0,L)])
+    #
+    # solve_forward(us, y_outs)
