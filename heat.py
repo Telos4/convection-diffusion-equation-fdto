@@ -20,9 +20,9 @@ k = Constant(1e-2)
 N = 10
 
 # boundary heat conductivity parameters
-alpha = Constant(0.1)
+alpha = Constant(1.0)
 beta = Constant(1.0)
-gamma = Constant(1.0e6)
+gamma = Constant(1.0e3)
 
 # Compile sub domains for boundaries
 left = CompiledSubDomain("near(x[0], 0.)")
