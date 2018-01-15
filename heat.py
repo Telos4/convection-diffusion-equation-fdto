@@ -20,9 +20,9 @@ k = Constant(1e-2)
 N = 10
 
 # boundary heat conductivity parameters
-alpha = Constant(1.0)
+alpha = Constant(0.1)
 beta = Constant(1.0)
-gamma = Constant(1.0e3)
+gamma = Constant(1.0e6)
 
 # Compile sub domains for boundaries
 left = CompiledSubDomain("near(x[0], 0.)")
@@ -66,6 +66,12 @@ def output_matrices():
 
     return b_u, b_y_out
 
+class MyExpression0(Expression):
+    def eval(self, value, x):
+        value[0] = 0.25
+
+    def value_shape(self):
+        return (1,)
 
 def solve_forward(us, y_outs, record=False):
 
@@ -74,7 +80,7 @@ def solve_forward(us, y_outs, record=False):
 
     # Define function space
     U = FunctionSpace(mesh, "Lagrange", 1)
-    W = VectorFunctionSpace(mesh, 'P', 1)
+    W = VectorFunctionSpace(mesh, 'P', 1, dim=1)
 
     # Set up initial values
     y0 = Function(U, name="y0")
@@ -92,15 +98,16 @@ def solve_forward(us, y_outs, record=False):
     #vv = interpolate(b, U)
     #vv = Constant(1.0)
     w = Function(W)
-    w = interpolate(Expression('x[0]', domain=mesh, degree=1), W)
+    e = MyExpression0(domain=mesh, degree=1)
+    w = interpolate(e, W)
 
     # Define variational formulation
-    a = (y/k * v + inner(grad(y), grad(v))) * dx + alpha * y * v * ds
-    f_y = (y0 / k * v + dot(w, grad(y0)) * v) * dx
+    a = (y/k * v + alpha * inner(grad(y), grad(v)) + dot(w, grad(y)) * v) * dx + alpha * gamma/beta * y * v * ds
+    f_y = (y0 / k * v ) * dx
 
-    f_u = beta * u * v * ds(1)
+    f_u = alpha * gamma/beta * u * v * ds(1)
 
-    f_y_out = beta * y_out * v * ds(0)
+    f_y_out = alpha * gamma/beta * y_out * v * ds(0)
 
     # Prepare solution
     y = Function(U, name="y")
@@ -135,7 +142,7 @@ if __name__ == "__main__":
 
     L = 200
 
-    us = np.array([0.5 - 1.0/3.0 * sin(i/10.0) for i in range(0,L)])
+    us = np.array([0.5 for i in range(0,L)])
     y_outs = np.array([0.5 + 1.0/3.0 * sin(i/10.0) for i in range(0,L)])
 
     solve_forward(us, y_outs)

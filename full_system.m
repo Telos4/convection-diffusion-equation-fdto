@@ -20,7 +20,8 @@ k = 0;
 y0 = 0.5 * ones(1, n_y);
 
 N = 10;
-L = 40;
+
+L = 50;
 
 y_out = zeros(N+L,1);
 for i = 1:N+L

@@ -100,10 +100,16 @@ The above variational equation is implemented in FEniCS to obtain the system mat
 Reordering the terms in \eqref{eq:fem-state-equation} by terms depending on the state $y_{k+1}$ and all external terms we get:
 \begin{equation}
 \underbrace{\int_{\Omega} \frac{y_{k+1}}{\Delta t} v + \alpha \nabla y_{k+1} \cdot \nabla v \; dx + \alpha \int_{\Gamma} \frac{\gamma}{\beta}  y_{k+1} v \; ds}_{a} = \underbrace{\int_{\Omega} \frac{y_k}{\Delta t} v \; dx}_{f_y} + \underbrace{\alpha \int_{\Gamma_c} \frac{\gamma}{\beta}  u_k v \; ds}_{f_u}  +  \underbrace{\alpha\int_{\Gamma_{out}} \frac{ \gamma}{\beta}  y_{out,k} v \; ds}_{f_{y,out}}
+\label{eq:weak-form-reordered}
 \end{equation}
-This is a linear system of equations which we can explicitely assemble in FEniCS using the \texttt{assemble()} function. We obtain a system of the form
+This is a linear system of equations which we can explicitely assemble in FEniCS using the \texttt{assemble()} function. We obtain the matrices and vectors
+\begin{align*}
+A \in \mathbb{R}^{n_y \times n_y}, B_y \in \mathbb{R}^{n_y \times n_y}, b_u \in \mathbb{R}^{n_y}, b_{y,out} \in \mathbb{R}^{n_y},
+\end{align*}
+where $n_y$ is the number of finite elements used in the spatial discretization.
+Equation \eqref{eq:weak-form-reordered} then corresponds to the linear system
 \begin{equation}
-A y_{k+1,h} = B_y y_{k,h} + b_u u_k + b_{y,out} y_{out,k}
+A y_{h,k+1} = B_y y_{h,k} + b_u u_k + b_{y,out} y_{out,k},
 \end{equation}
 making use of the fact that $u_k$ and $y_{out,k}$ are constant on the boundary. The system matrices and vectors are generated in FEniCS and then saved to a file for subsequent use in MATLAB.
 
@@ -162,18 +168,18 @@ Our goal is to solve the following problem:
 where $\Omega_y \subset \Omega$.
 \\
 The problem is solved by the First-Discretize-Then-Optimize-Approach.
-We replace $y$ by its finite element approximations $y_{h,k}$ for each time point $t = k \Delta t, k \in \{0, \hdots, N\}$. Let $y_h = (y_{h,0}, \hdots, y_{h,N})$ and $u = (u_0, \hdots, u_{N-1})$.
+We replace $y$ by its finite element approximations $y_{h,k}$ for each time point $t = k \Delta t, k \in \{0, \hdots, N\}$. Let $y_h = (y_{h,0}, \hdots, y_{h,N})$, $u = (u_0, \hdots, u_{N-1})$ and $y_{out} = (y_{out,0}, \hdots, y_{out,N-1})$.
 We end up with a finite dimensional optimal control problem which reads:
 \begin{align*}
-& \min_{y_h,u} J(y_h, u) = \sum_{k=0}^{N-1} \frac{\varepsilon}{2} (y_{h,k} - y_{\Omega,k})^T Q (y_{h,k} - y_{\Omega,k}) + \frac{1}{2} (u_k - u_{ref,k})^T R (u_k - u_{ref,k}) \\ 
+& \min_{y_h,u} J(y_h, u) = \sum_{k=0}^{N-1} \left( \frac{\varepsilon}{2} (y_{h,k} - y_{\Omega,k})^T Q (y_{h,k} - y_{\Omega,k}) + \frac{1}{2} (u_k - u_{ref,k})^T R (u_k - u_{ref,k}) \right) \\ 
 & + \frac{\varepsilon}{2} (y_{h,N} - y_{\Omega,N})^T Q (y_{h,N} - y_{\Omega,N}) \\
-\text{s.t. }  & A y_{k+1,h} = B_y y_{h,k} + b_u u_k + b_{y,out} y_{out,k} \text{ for } k \in \{0, \hdots, N\} \\
+\text{s.t. }  & A y_{h,k+1} = B_y y_{h,k} + b_u u_k + b_{y,out} y_{out,k} \text{ for } k \in \{0, \hdots, N-1\} \\
 &\underline{y}_{h,k,i} \leq y_{h,k,i} \leq \overline{y}_{h,k,i} \text{ for } k \in \{0, \hdots, N\}, i \in \mathcal{I}_{\Omega_y} \\
 &\underline{u}_{k} \leq u_{k} \leq \overline{u}_{k} \text{ for } k \in \{0, \hdots, N-1\}
 \end{align*}
 where $\mathcal{I}_{\Omega_y}$ is the set of all indices with finite element nodes within the set $\Omega_y$. When using Lagrange finite elements the degrees of freedom of the FE approximation $y_h$ of the state $y$ correspond to the value of $y_h$ at the finite element nodes. This means we can enforce the state constraint pointwise at the finite element nodes, simply by constraining the corresponding elements of $y_h$. \\
 
-Introducing $z = (y_h, u)$ the equality constraint of the optimization problem can be written as a single linear equation 
+Introducing $z = (y_h, u) \in \mathbb{R}^{n_z}$, where $n_z = (N+1)n_y + N n_u$ the equality constraint of the optimization problem can be written as a single linear equation 
 \begin{equation}
 A_{eq} z = b_{eq}
 \label{eq:linear-system-constraints}
@@ -182,24 +188,24 @@ where
 \begin{equation}
 A_{eq} =
 \underbrace{\begin{pmatrix}
--B_y & A & & & & & b_u & & \\
-& - B_y & A & & & & & b_u & \\
+-B_y & A & & & & & -b_u & & \\
+& - B_y & A & & & & & -b_u & \\
 & & & \ddots & & & & & \ddots \\
-& & & & -B_y & A & & & & b_u
+& & & & -B_y & A & & & & -b_u
 \end{pmatrix}}_{
-\in \mathbb{R}^{N n_y \times (N+1) n_y + (N-1) n_u}}
+\in \mathbb{R}^{N n_y \times n_z}}
 \end{equation}
 \begin{equation}
 b_{eq} = 
 \underbrace{\begin{pmatrix}
-b_{y,out} & & & \\
-& b_{y,out} & &  \\
+b_{y,out}*y_{out,1} & & & \\
+& b_{y,out}*y_{out,2} & &  \\
 & & \ddots & \\
-& & & b_{y,out}
+& & & b_{y,out}*y_{out,N}
 \end{pmatrix}}_{
-\in \mathbb{R}^{N n_y \times (N-1)}
+\in \mathbb{R}^{N n_y \times N}
 }
- y_{out} \in \mathbb{R}^{N n_y}
+  \in \mathbb{R}^{N n_y}
 \end{equation}
 where $n_y$ and $n_u$ denote the dimensions of $y_{h,k}$ and $u_k$, respectively.
 Note that this is a sparse linear system and should be treated accordingly (i.e. only allocate memory for nonzero matrix entries).
@@ -214,7 +220,7 @@ The optimization algorithm also needs to be provided with the gradient and (opti
 R (u_0 - u_{ref,0}) \\
 \vdots \\
 R (u_{N-1} - u_{ref,N-1})
-\end{pmatrix}
+\end{pmatrix} \in \mathbb{R}^{n_z}
 \end{equation}
 \begin{equation}
 \nabla^2 J(z) = 
@@ -225,7 +231,7 @@ R (u_{N-1} - u_{ref,N-1})
 & & & R & &\\
 & & & & \ddots & \\
 & & & & & R \\
-\end{pmatrix}.
+\end{pmatrix} \in \mathbb{R}^{n_z \times n_z}.
 \end{equation}
 The hessian is also a sparse matrix.
 
@@ -289,7 +295,7 @@ Q &= I_{n_y \times n_y} \\
 R &= I_{n_u \times n_u} = 1\\
 N &= 10\\
 y_{\Omega,k} &= 0.5 \text{ for } k \in \{0, \hdots, N\} \\
-u_{ref,k} &= 0.5 \text{ for } k \in \{0, \hdots, N-1\}. \\
+u_{ref,k} &= 0.5 \text{ for } k \in \{0, \hdots, N-1\}.
 \end{align*}
 The constraints for control and state are given by
 \begin{align*}
