@@ -20,9 +20,9 @@ k = Constant(1e-2)
 N = 10
 
 # boundary heat conductivity parameters
-alpha = Constant(0.1)
+alpha = Constant(1.0)
 beta = Constant(1.0)
-gamma = Constant(1.0e6)
+gamma = Constant(1.0e3)
 
 # Compile sub domains for boundaries
 left = CompiledSubDomain("near(x[0], 0.)")
@@ -137,12 +137,12 @@ def solve_forward(us, y_outs, record=False):
 
 
 if __name__ == "__main__":
+    
+    output_matrices()
 
-    #output_matrices()
+    #L = 200
 
-    L = 200
+    #us = np.array([0.5 for i in range(0,L)])
+    #y_outs = np.array([0.5 + 1.0/3.0 * sin(i/10.0) for i in range(0,L)])
 
-    us = np.array([0.5 for i in range(0,L)])
-    y_outs = np.array([0.5 + 1.0/3.0 * sin(i/10.0) for i in range(0,L)])
-
-    solve_forward(us, y_outs)
+    #solve_forward(us, y_outs)
