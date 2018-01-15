@@ -159,7 +159,8 @@ def solve_forward(us, y_outs, record=False):
 
 
 if __name__ == "__main__":
-    output_matrices()
+
+   output_matrices()
 
     # L = 200
     #
