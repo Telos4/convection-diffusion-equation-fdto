@@ -106,7 +106,7 @@ bool HEAT_NLP::get_bounds_info(Index n, Number* x_l, Number* x_u,
 //where to put this function?
 
 double eval_y_out(int i) {
-    return 0.5 +  0.3* sin(0.1 * i);
+    return 0.5 +  0.292* sin(0.1 * i);
 }
 //Lösung vom letzten
 

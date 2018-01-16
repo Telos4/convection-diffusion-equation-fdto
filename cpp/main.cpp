@@ -15,7 +15,7 @@ using namespace Ipopt;
 
 int main(int argv, char* argc[]) {
 
-    int steps = 5;
+    int steps = 200;
     MATRIXOP data1(10, "A.mtx", "B_y.mtx", "b_u.txt", "b_y_out.txt", 10e-3, 0.5, 0.5);
     //MATRIXOP data2(1, "A_small.mtx", "B_y_small.mtx", "b_u_small.txt", "b_y_out_small.txt", 10e-3, 0.5, 0.5);
 
