@@ -34,9 +34,17 @@ left.mark(boundary_parts, 0)    # boundary part for outside temperature
 right.mark(boundary_parts, 1)   # boundary part where control is applied
 ds = Measure("ds", subdomain_data=boundary_parts)
 
+class MyExpression0(Expression):
+    def eval(self, value, x):
+        value[0] = -1.0
+
+    def value_shape(self):
+        return (1,)
+
 def output_matrices():
-    # Define function space
+    # Define function spaces
     U = FunctionSpace(mesh, "Lagrange", 1)
+    W = VectorFunctionSpace(mesh, 'P', 1, dim=1)
 
     # Define test and trial functions
     v = TestFunction(U)
@@ -46,8 +54,13 @@ def output_matrices():
     u = Constant(1.0)
     y_out = Constant(1.0)
 
+    w = Function(W)
+    e = MyExpression0(domain=mesh, degree=1)
+    w = interpolate(e, W)
+
     # Define variational formulation
     a = (y / k * v + alpha * inner(grad(y), grad(v))) * dx + alpha * gamma/beta * y * v * ds
+    f_w = dot(w, grad(y)) * v * dx
     f_y = y0 / k * v * dx
 
     f_y_out = alpha * gamma/beta * y_out * v * ds(0)
@@ -55,30 +68,27 @@ def output_matrices():
     f_u = alpha * gamma / beta * u * v * ds(1)
 
     A = assemble(a)
+
+    B_w = assemble(f_w)
     B_y = assemble(f_y)
 
     b_u = assemble(f_u)
     b_y_out = assemble(f_y_out)
 
     # output matrices for use in matlab optimization
-    scipy.io.savemat('sys.mat', {'A': A.array(), 'B_y': B_y.array(), 'b_u': b_u.array(), 'b_y_out': b_y_out.array(),
+    scipy.io.savemat('sys.mat', {'A': A.array(), 'B_y': B_y.array(), 'B_w': B_w.array(), 'b_u': b_u.array(), 'b_y_out': b_y_out.array(),
                                  })
 
     return b_u, b_y_out
 
-class MyExpression0(Expression):
-    def eval(self, value, x):
-        value[0] = 0.0
 
-    def value_shape(self):
-        return (1,)
 
 def solve_forward(us, y_outs, record=False):
 
     """ The forward problem """
     ofile = File("results/y.pvd")
 
-    # Define function space
+    # Define function spaces
     U = FunctionSpace(mesh, "Lagrange", 1)
     W = VectorFunctionSpace(mesh, 'P', 1, dim=1)
 
