@@ -10,16 +10,25 @@
 %        [           e*Q              ]
 %        [                R           ]
 %        [                   ...      ]
-%        [                        R   ]
+%        [                        R              ]
+%        [                           W           ]
+%        [                              ...      ]
+%        [                                  W    ]
 % The matrix is stored as a sparse matrix.
-function [ H ] = hessian_objective( z, lambda, N )
-global epsilon;
-global n_y;
-global n_u;
-n_z = (N+1) * n_y + N * n_u;
+function [ H ] = hessian_objective( z, lambda, params )
+n_y = params.n_y;
+n_u = params.n_u;
+n_w = params.n_w;
+N = params.N;
+    
+epsilon_y = params.epsilon_y;
+epsilon_u = params.epsilon_u;
+epsilon_w = params.epsilon_w;
 
-inds = [1:(N+1)*n_y (N+1)*n_y+1:(N+1)*n_y+N*n_u];
-vals = [epsilon*ones(1,(N+1)*n_y) ones(1,N*n_u)];
-H = sparse(inds, inds, vals);
+n_z = (N+1) * n_y + N * n_u + N * n_w + N * n_y;
+
+inds = [1:(N+1)*n_y (N+1)*n_y+1:(N+1)*n_y+N*n_u (N+1)*n_y+N*n_u+1:(N+1)*n_y+N*n_u+N*n_w];
+vals = [epsilon_y*ones(1,(N+1)*n_y) epsilon_u*ones(1,N*n_u) epsilon_w*ones(1,N*n_w)];
+H = sparse(inds, inds, vals, n_z, n_z);
 end
 

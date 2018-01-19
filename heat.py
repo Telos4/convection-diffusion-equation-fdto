@@ -10,7 +10,7 @@ from collections import OrderedDict
 set_log_level(WARNING)
 
 # Prepare a mesh
-mesh = UnitIntervalMesh(100)
+mesh = UnitIntervalMesh(30)
 #mesh = UnitSquareMesh(10,10)
 
 # Choose a time step size
@@ -20,9 +20,9 @@ k = Constant(1e-2)
 N = 10
 
 # boundary heat conductivity parameters
-alpha = Constant(1.0)
+alpha = Constant(0.5)
 beta = Constant(1.0)
-gamma = Constant(1.0e3)
+gamma = Constant(1.0e6)
 
 # Compile sub domains for boundaries
 left = CompiledSubDomain("near(x[0], 0.)")
@@ -112,8 +112,8 @@ def solve_forward(us, y_outs, record=False):
     w = interpolate(e, W)
 
     # Define variational formulation
-    a = (y/k * v + alpha * inner(grad(y), grad(v)) + dot(w, grad(y)) * v) * dx + alpha * gamma/beta * y * v * ds
-    f_y = (y0 / k * v ) * dx
+    a = (y/k * v + alpha * inner(grad(y), grad(v))) * dx + alpha * gamma/beta * y * v * ds
+    f_y = (y0 / k * v + dot(w, grad(y0)) * v ) * dx
 
     f_u = alpha * gamma/beta * u * v * ds(1)
 
