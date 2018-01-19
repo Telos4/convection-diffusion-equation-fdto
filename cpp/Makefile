@@ -33,7 +33,7 @@ ADDINCFLAGS =
 CXX = g++
 
 # C++ Compiler options
-CXXFLAGS = -O3 -pipe -DNDEBUG -Wparentheses -Wreturn-type -Wcast-qual -Wall -Wpointer-arith -Wwrite-strings -Wconversion -Wno-unknown-pragmas -Wno-long-long   -DIPOPT_BUILD
+CXXFLAGS = -std=c++11 -O3 -pipe -DNDEBUG -Wparentheses -Wreturn-type -Wcast-qual -Wall -Wpointer-arith -Wwrite-strings -Wconversion -Wno-unknown-pragmas -Wno-long-long   -DIPOPT_BUILD
 
 # additional C++ Compiler options for linking
 CXXLINKFLAGS =  -Wl,--rpath -Wl,/home/martin/CoinIpopt/build/lib

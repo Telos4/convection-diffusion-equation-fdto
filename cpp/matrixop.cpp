@@ -52,6 +52,9 @@ MATRIXOP::MATRIXOP(int N_, string file_A, string file_B, string file_b_u, string
     ofstream del2("solution_u.txt", ofstream::trunc);
     del1.close();
     del2.close();
+    
+    
+    closed_loop_cost = 0;
 }
 
 
