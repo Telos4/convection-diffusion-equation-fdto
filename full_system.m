@@ -29,7 +29,7 @@ params.epsilon_u = 1.0;
 params.epsilon_w = 1.0;
 
 % horizon length
-params.N = 30;
+params.N = 10;
 
 % initial time
 params.k = 0;
@@ -51,6 +51,7 @@ end
 u_guess = zeros(params.N,1);
 w_guess = zeros(params.N,1);
 
+tic
 y_cl = [params.y0];
 u_cl = [];
 w_cl = [];
@@ -70,7 +71,7 @@ for j = 0:L-1
     u_guess = [u_ol(2:end); u_ol(end)];
     w_guess = [w_ol(2:end); w_ol(end)];
 end
-
+toc
 approx_cl_cost = sum((u_cl - params.u_ref).*(u_cl - params.u_ref)) + sum((w_cl - params.w_ref) .* (w_cl - params.w_ref));
 disp(sprintf('approximate closed loop cost: %f', approx_cl_cost));
     

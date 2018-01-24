@@ -30,5 +30,19 @@ n_z = (N+1) * n_y + N * n_u + N * n_w + N * n_y;
 inds = [1:(N+1)*n_y (N+1)*n_y+1:(N+1)*n_y+N*n_u (N+1)*n_y+N*n_u+1:(N+1)*n_y+N*n_u+N*n_w];
 vals = [epsilon_y*ones(1,(N+1)*n_y) epsilon_u*ones(1,N*n_u) epsilon_w*ones(1,N*n_w)];
 H = sparse(inds, inds, vals, n_z, n_z);
+
+% % optional: use second derivatives of the nonlinear constraints:
+% G = zeros(n_z, n_z);
+% for i = 0:N-1
+%     for j = 1:n_y
+%         inds_i = (N+1)*n_y+N*n_u+i+1;
+%         inds_j = (i+1)*n_y+1:(i+2)*n_y;
+%         G(inds_i, inds_j) = G(inds_i,inds_j) + lambda.eqnonlin(i*n_y+j) * params.B_w(j,:);
+%         G(inds_j, inds_i) = G(inds_j,inds_i) + lambda.eqnonlin(i*n_y+j) * params.B_w(j,:)';
+%     end
+% end
+% G = sparse(G);
+% H = H + G;
+
 end
 

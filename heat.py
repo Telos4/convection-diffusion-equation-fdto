@@ -34,7 +34,7 @@ left.mark(boundary_parts, 0)    # boundary part for outside temperature
 right.mark(boundary_parts, 1)   # boundary part where control is applied
 ds = Measure("ds", subdomain_data=boundary_parts)
 
-class MyExpression0(Expression):
+class VelocityFieldExpression(Expression):
     def eval(self, value, x):
         value[0] = -1.0
 
@@ -55,7 +55,7 @@ def output_matrices():
     y_out = Constant(1.0)
 
     w = Function(W)
-    e = MyExpression0(domain=mesh, degree=1)
+    e = VelocityFieldExpression(domain=mesh, degree=1)
     w = interpolate(e, W)
 
     # Define variational formulation
@@ -108,7 +108,7 @@ def solve_forward(us, y_outs, record=False):
     #vv = interpolate(b, U)
     #vv = Constant(1.0)
     w = Function(W)
-    e = MyExpression0(domain=mesh, degree=1)
+    e = VelocityFieldExpression(domain=mesh, degree=1)
     w = interpolate(e, W)
 
     # Define variational formulation
