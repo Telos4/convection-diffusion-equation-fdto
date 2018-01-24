@@ -41,6 +41,7 @@ b = [];
 options = optimset('Algorithm', 'interior-point', ...
     'GradObj', 'on', ...
     'GradConstr', 'on', ...
+    'DerivativeCheck', 'off', ...
     'Hessian', 'user-supplied', 'HessFcn', @(z,lambda)hessian_objective(z,lambda,params), ...
     'Display', 'off');
 
@@ -209,6 +210,6 @@ function [lb, ub] = assemble_state_control_constraints(params)
     end
 
     % constraints for the control
-    lb((N+1)*n_y+1:(N+1)*n_y+N*n_u) = 0.25;
-    ub((N+1)*n_y+1:(N+1)*n_y+N*n_u) = 0.75;
+    lb((N+1)*n_y+1:(N+1)*n_y+N*n_u) = -0.25;
+    ub((N+1)*n_y+1:(N+1)*n_y+N*n_u) = 0.25;
 end

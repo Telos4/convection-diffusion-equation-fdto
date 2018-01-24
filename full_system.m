@@ -20,7 +20,7 @@ params.n_v = 0;%params.n_y;
 
 % parameters for optimization
 params.y_ref = 0.5 * ones(params.n_y,1);
-params.u_ref = 0.5 * ones(params.n_u,1);
+params.u_ref = 0.0 * ones(params.n_u,1);
 
 % weights for objective function
 params.epsilon_y = 0.0;
@@ -43,19 +43,19 @@ else
 end
 
 % horizon length
-params.N = 2;
+params.N = 1;
 
 % initial time
 params.k = 0;
 
 % initial state
-params.y0 = 0.5 * ones(1, params.n_y);
+params.y0 = 0.0 * ones(1, params.n_y);
 
 
-L = 50;
+L = 100;
 y_out = zeros(params.N+L,1);
 for i = 0:params.N+L
-    y_out(i+1) = 0.5 + 0.3 * sin(0.1 * i);
+    y_out(i+1) = 0.3 * sin(0.1 * i);
 end
 
 u_guess = zeros(params.N,1);
@@ -109,7 +109,7 @@ for i = 1:L
     plot(ax,(1:params.n_y)/params.n_y, lb, 'r'); hold on;
     plot(ax,(1:params.n_y)/params.n_y, ub, 'r');
     plot(ax,[0.95 1.0], [0.25 0.25], 'b');
-    plot(ax,[0.95 1.0], [0.75 0.75], 'b');
+    plot(ax,[0.95 1.0], [-0.25 -0.25], 'b');
     plot(ax,1/(2*params.n_y):1/params.n_y:1, y_cl(i,:), 'k');
     plot(ax,0,y_out(i),'r*');
     plot(ax,1,u_cl(i),'b*');
@@ -119,14 +119,14 @@ for i = 1:L
 %         vend   = [j/params.n_y-0.001*sign(w_cl(i)) y_cl(i,j)];
 % %         arrow(vstart, vend)
 %     end
-    axis([0 1 0 1])
+    axis([0 1 -0.5 0.5])
 
     xlabel('$x$ (Pos.)','interpreter','latex'); ylabel(['$y$ (Temp.)'],'interpreter','latex');
     set(ax,'TickLabelInterpreter','latex');
-    text(0.8, 0.9, ['t = ' num2str(i/100)])
+    text(0.8, 0.4, ['t = ' num2str(i/100)])
     
     if params.convection == 1
-        text(0.8, 0.7, ['w = ' num2str(w_cl(i))])
+        text(0.8, 0.3, ['w = ' num2str(w_cl(i))])
     end
     hold off;
     
