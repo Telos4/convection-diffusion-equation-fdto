@@ -14,36 +14,17 @@
 % The time-varying constraints for the state and the constraints for the
 % control are implemented as simple lower and upper bounds (box
 % constraints) of the optimization variable z.
-function [u_ol, w_ol, y_ol, fval,exitflag] = ocp_full_discretization(params, u_guess, w_guess)
+function [u_ol, w_ol, y_ol, fval,exitflag] = ocp_full_discretization(params)
 % extract parameters
 n_y = params.n_y;
 n_u = params.n_u;
 n_w = params.n_w;
+n_v = params.n_v;
 N = params.N;
 
-n_z = (N+1) * n_y + N * n_u + N * n_w + N * n_y;
+n_z = (N+1) * n_y + N * n_u + N * n_w + N * n_v;
 
 % initial value
-% if length(u_guess) > 0 && length(w_guess) > 0
-%     z = zeros(n_z,1); 
-%     
-%     z(1:n_y) = y0;
-%     for i = 1:N
-%         yk = z((i-1)*n_y+1:i*n_y);
-%         uk = u_guess(i);
-%         wk = u_guess(i);
-%         youtk = y_outs(i);
-%         yk1 = (A + wk * B_w) \ (B_y * yk + b_u * uk + b_y_out * youtk);
-%         vk = wk * B_w * yk1;
-%         z(i*n_y+1:(i+1)*n_y) = yk1;
-%         z((N+1)*n_y+N*n_u+N*n_w+(i-1)*n_y+1:(N+1)*n_y+N*n_u+N*n_w+i*n_y) = vk;
-%     end
-%     z((N+1)*n_y+1:(N+1)*n_y+N*n_u) = u_guess;
-%     z((N+1)*n_y+N*n_u+1:(N+1)*n_y+N*n_u+N*n_w) = w_guess;
-%     
-% else
-%     z = zeros(n_z,1); 
-% end
 z = zeros(n_z,1); 
 
 % system dynamic as equality constraints
@@ -140,6 +121,7 @@ function [Aeq, beq] = assemble_eq_constraints(params)
     n_y = params.n_y;
     n_u = params.n_u;
     n_w = params.n_w;
+    n_v = params.n_v;
     N = params.N;
     A = params.A;
     B_y = params.B_y;
@@ -147,14 +129,14 @@ function [Aeq, beq] = assemble_eq_constraints(params)
     b_y_out = params.b_y_out;
     y_out = params.y_out;
 
-    n_z = (N+1) * n_y + N * n_u + N * n_w + N * n_y;
+    n_z = (N+1) * n_y + N * n_u + N * n_w + N * n_v;
     
     Aeq = zeros(N * n_y, n_z);
     for i = 1:N
         Aeq((i-1)*n_y+1:i*n_y,i*n_y+1:(i+1)*n_y) = A;
         Aeq((i-1)*n_y+1:i*n_y,(i-1)*n_y+1:i*n_y) = -B_y;        
         Aeq((i-1)*n_y+1:i*n_y, (N+1)*n_y+(i-1)*n_u+1:(N+1)*n_y+i*n_u) = -b_u;
-        Aeq((i-1)*n_y+1:i*n_y, (N+1)*n_y+N*n_u+N*n_w+(i-1)*n_y+1:(N+1)*n_y+N*n_u+N*n_w+i*n_y) = ones(n_y);
+        Aeq((i-1)*n_y+1:i*n_y, (N+1)*n_y+N*n_u+N*n_w+(i-1)*n_y+1:(N+1)*n_y+N*n_u+N*n_w+i*n_v) = eye(n_v);
     end
     Aeq = sparse(Aeq);  % convert to sparse matrix
 
@@ -169,30 +151,31 @@ function [c, ceq, grad_c, grad_ceq] = nonlinear_constraints(z, params)
     n_y = params.n_y;
     n_u = params.n_u;
     n_w = params.n_w;
+    n_v = params.n_v;
     N = params.N;
     B_w = params.B_w;
     
-    n_z = (N+1) * n_y + N * n_u + N * n_w + N * n_y;
+    n_z = (N+1) * n_y + N * n_u + N * n_w + N * n_v;
     
     c = [];
-    ceq = zeros(N * n_y, 1);
+    ceq = zeros(N * n_v, 1);
     for i = 1:N
         wk = z((N+1)*n_y+N*n_u+(i-1)*n_w+1:(N+1)*n_y+N*n_u+i*n_w);
-        vk = z((N+1)*n_y+N*n_u+N*n_w+(i-1)*n_y+1:(N+1)*n_y+N*n_u+N*n_w+i*n_y);
-        yk1 = z(i*n_y+1:(i+1)*n_y);
-        ceq((i-1)*n_y+1:i*n_y) = vk - wk * B_w * yk1;
+        vk = z((N+1)*n_y+N*n_u+N*n_w+(i-1)*n_v+1:(N+1)*n_y+N*n_u+N*n_w+i*n_v);
+        yk1 = z(i*n_v+1:(i+1)*n_v);
+        ceq((i-1)*n_v+1:i*n_v) = vk - wk' * B_w * yk1;
     end
     
     grad_c = [];
     
-    grad_ceq = zeros(N * n_y, n_z);
+    grad_ceq = zeros(N * n_v, n_z);
     for i = 1:N
         wk = z((N+1)*n_y+N*n_u+(i-1)*n_w+1:(N+1)*n_y+N*n_u+i*n_w);
-        yk1 = z(i*n_y+1:(i+1)*n_y);
+        yk1 = z(i*n_v+1:(i+1)*n_v);
         
-        grad_ceq((i-1)*n_y+1:i*n_y,i*n_y+1:(i+1)*n_y) = -wk * B_w;
-        grad_ceq((i-1)*n_y+1:i*n_y,(N+1)*n_y+N*n_u+(i-1)*n_w+1:(N+1)*n_y+N*n_u+i*n_w) = -B_w * yk1;
-        grad_ceq((i-1)*n_y+1:i*n_y,(N+1)*n_y+N*n_u+N*n_w+(i-1)*n_y+1:(N+1)*n_y+N*n_u+N*n_w+i*n_y) = eye(n_y);
+        grad_ceq((i-1)*n_v+1:i*n_v,i*n_v+1:(i+1)*n_v) = -wk' * B_w;
+        grad_ceq((i-1)*n_v+1:i*n_v,(N+1)*n_y+N*n_u+(i-1)*n_w+1:(N+1)*n_y+N*n_u+i*n_w) = -B_w * yk1;
+        grad_ceq((i-1)*n_v+1:i*n_v,(N+1)*n_y+N*n_u+N*n_w+(i-1)*n_v+1:(N+1)*n_y+N*n_u+N*n_w+i*n_v) = eye(n_v);
     end
     grad_ceq = sparse(grad_ceq');
 end
@@ -201,11 +184,12 @@ function [lb, ub] = assemble_state_control_constraints(params)
     n_y = params.n_y;
     n_u = params.n_u;
     n_w = params.n_w;
+    n_v = params.n_v;
     N = params.N;
     y0 = params.y0;
     k = params.k;
     
-    n_z = (N+1) * n_y + N * n_u + N * n_w + N * n_y;
+    n_z = (N+1) * n_y + N * n_u + N * n_w + N * n_v;
     
     lb = -Inf * ones(n_z, 1);
     ub =  Inf * ones(n_z, 1);
