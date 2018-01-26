@@ -198,10 +198,13 @@ We end up with a finite dimensional optimal control problem which reads:
 \end{align*}
 where $\mathcal{I}_{\Omega_y}$ is the set of all indices with finite element nodes within the set $\Omega_y$. When using Lagrange finite elements the degrees of freedom of the FE approximation $y_h$ of the state $y$ correspond to the value of $y_h$ at the finite element nodes. This means we can enforce the state constraint pointwise at the finite element nodes, simply by constraining the corresponding elements of $y_h$. \\
 
+In the following it is described how the open-loop optimal control problems are solved in MATLAB with its \texttt{fmincon} solver and in C++ with Ipopt ,respectively. The implementations are slightly different. In MATLAB linear and nonlinear constraints can be treated seperately. For easier implementation we introduced an additional variable for the nonlinear part of the state equation.\\
+In Ipopt this is not necessary, because linear constraints are not treated any different than nonlinear constraints in the problem formulation required by the solver.
+\subsection{Implementation in MATLAB}
 Introducing $z = (y_h, u, w, \nu) \in \mathbb{R}^{n_z}$, where $n_z = (N+1)n_y + N n_u  + N n_w + N n_y$ the equality constraint of the optimization problem can be written as a single linear equation 
 \begin{equation}
 A_{eq} z = b_{eq}
-\label{eq:linear-system-constraints}
+\label{eq:matlab-linear-system-constraints}
 \end{equation}
 where
 \begin{equation}
@@ -236,9 +239,10 @@ c_{eq}(z) =
 \nu_0 - w_0 B_w y_{h,1} \\
 \vdots \\
 \nu_{N-1} - w_{N-1} B_w y_{h,N}
-\end{pmatrix} \in \mathbb{R}^{N n_y}
-\label{eq:nonlinear-system-constraints}
-\end{equation}.
+\end{pmatrix} \in \mathbb{R}^{N n_y}.
+\label{eq:matlab-nonlinear-system-constraints}
+\end{equation}
+NOTE: Using the additional variable $\nu_k$ almost doubles the size of the optimization variable $z$. This has been done because it was a quick and simple way to implement the problem and since the MATLAB implementation is only used for testing purposes anyway, but it is not a very efficient solution. In the C++ implementation described in the next subsection this is done differently.
 
 The optimization algorithm also needs to be provided with the gradient and (optionally) the hessian of the cost functional $J$. Those quantities are given by
 \begin{equation}
@@ -276,26 +280,7 @@ W w_{N-1} \\
 \end{equation}
 where $O_{N n_y\times N n_y}$ is a zero matrix. Note that the hessian is also a sparse matrix.
 
-For implementation in MATLAB this is all that is necessary because linear and nonlinear constraints are treated seperately. 
-
-For Ipopt this is not the case and we have to provide the jacobian of the constraints as well as the hessian of the Lagrange function (see \url{https://www.coin-or.org/Ipopt/documentation/node22.html}).
-In the Ipopt implementation we rewrite equations \eqref{eq:linear-system-constraints} and \eqref{eq:nonlinear-system-constraints} to be of the form $g(z) = 0$, i.e.
-\begin{equation}
-g(z) = 
-\begin{pmatrix}
-A_{eq} z - b_{eq} \\
-c_{eq}(z)
-\end{pmatrix}
-\end{equation}
-Then the Jacobian of $g$ is given by
-\begin{equation}
-\nabla g (z) =
-\begin{pmatrix}
-A_{eq}\\
-J_{c_{eq}}(z)
-\end{pmatrix}
-\end{equation}
-where 
+Finally we also have to provide the Jacobian of the nonlinear constraint function $c_{eq}$. This is given by
 \begin{equation}
 J_{c_{eq}}(z) = 
 \underbrace{
@@ -306,46 +291,104 @@ J_{c_{eq}}(z) =
 \end{pmatrix}}_{
 \in \mathbb{R}^{N n_y \times n_z}}
 \end{equation}
-For the hessian of the Lagrange function we need to specify the matrices $\nabla^2 g_i(z)$. Those are given by
+
+For implementation in MATLAB this is all that is necessary for the optimization to run.
+
+NOTE: Only the Hessian of the objective function is used in the implementation. I tried to use the Hessian of the Lagrange Function, but could not observe a speedup which is why if refrain from going into any more detail here. The Hessian of the objective function seems to be a close enough approximation that the speedup the exact Hessian could provide is offset by the effort it takes to compute it. However, I did not try to optimize the way the Hessian of the Lagrange function is computed, so there may still be some way for improvement here. I chose not to do this, because the MATLAB implementation will hardly be able to compete with the C++ implementation anyway.
+
+\subsection{Implementation in C++}
+In the Ipopt implementation the optimization variable is $z = (y_h, u, w) \in \mathbb{R}^{n_z}$, where $n_z = (N+1)n_y + N n_u  + N n_w$. Here we implement the nonlinear system dynamics directly, without introducing an additional variable as we did in the MATLAB implementation. The function the the nonlinear constraints is given by
 \begin{equation}
-\nabla^2 g_k(z) = O_{n_z \times n_z} \text{ for } k \in \{1, \hdots, N n_y\}
+g(z) =
+\begin{pmatrix}
+A y_{h,1} + w_0 B_w y_{h,1} - B_y y_{h,0} - b_u u_0 - b_{y,out} y_{out,0} \\
+\vdots \\
+A y_{h,N} + w_{N-1} B_w y_{h,N} - B_y y_{h,N-1} - b_u u_{N-1} - b_{y,out} y_{out,N-1}
+\end{pmatrix} \in \mathbb{R}^{N n_y}.
+\label{eq:ipopt-nonlinear-system-constraints}
 \end{equation}
-and are of the form $\nabla^2 g_k(z) = $
+The Jacobian of $g$ is given by
+\begin{equation}
+\scriptsize
+\nabla g (z) =
+\underbrace{\begin{pmatrix}
+-B_y & A + w_0 B_w &             &        &                 & -b_u &      &        &      & B_w y_{h,1} &             &       &  \\
+     &        -B_y & A + w_1 B_w &        &                 &      & -b_u &        &      &             & B_w y_{h,2} &       &  \\
+     &             &             & \ddots &                 &      &      & \ddots &      &             &             &\ddots &  \\
+     &             &             &   -B_y & A + w_{N-1} B_w &      &      &        & -b_u &             &             &       & B_w y_{h,N} 
+\end{pmatrix}}_{
+\in \mathbb{R}^{N n_y \times n_z}}
+\end{equation}
+The gradient of the objective function is given by
+\begin{equation}
+\nabla J(z) = 
+\begin{pmatrix}
+\varepsilon Q (y_{h,0} - y_{\Omega,0}) \\
+\vdots \\
+\varepsilon Q (y_{h,N} - y_{\Omega,N}) \\
+R (u_0 - u_{ref,0}) \\
+\vdots \\
+R (u_{N-1} - u_{ref,N-1}) \\
+W w_0 \\
+\vdots \\
+W w_{N-1} \\
+\end{pmatrix} \in \mathbb{R}^{n_z},
+\end{equation}
+and the Hessian of the objective function by
+\begin{equation}
+\nabla^2 J(z) = 
+\begin{pmatrix}
+\eQ &        &     &   &        &   &   &        &   &                  \\
+    & \ddots &     &   &        &   &   &        &   &                  \\
+    &        & \eQ &   &        &   &   &        &   &                  \\
+    &        &     & R &        &   &   &        &   &                  \\
+    &        &     &   & \ddots &   &   &        &   &                  \\
+    &        &     &   &        & R &   &        &   &                  \\
+    &        &     &   &        &   & W &        &   &                  \\
+    &        &     &   &        &   &   & \ddots &   &                  \\
+    &        &     &   &        &   &   &        & W &                  \\
+\end{pmatrix} \in \mathbb{R}^{n_z \times n_z}.
+\end{equation}
+
+For the Hessian of the Lagrange function we additionally need to specify the matrices $\nabla^2 g_i(z)$. Those are of the form 
 \def\Bw{B_w(j,:)}
 \def\Bwt{\Bw^T}
-\begin{tiny}
+\begin{scriptsize}
 \begin{equation}
+\nabla^2 g_k(z) = 
 \bordermatrix{
-              & y_0 & \hdots & y_{i+1} & \hdots & y_N & u_0 & \hdots & u_{N-1} & w_0 & \hdots & w_i & \hdots & w_{N-1} & \nu_0 & \hdots & \nu_{N-1} \cr
-y_0           &     &        &         &        &     &     &        &         &     &        &     &        &         &       &        &           \cr
-\vdots        &     &        &         &        &     &     &        &         &     &        &     &        &         &       &        &           \cr
-y_{i+1}       &     &        &         &        &     &     &        &         &     &        & \Bwt&        &         &       &        &           \cr
-\vdots        &     &        &         &        &     &     &        &         &     &        &     &        &         &       &        &           \cr
-y_N           &     &        &         &        &     &     &        &         &     &        &     &        &         &       &        &           \cr
-u_0           &     &        &         &        &     &     &        &         &     &        &     &        &         &       &        &           \cr
-\vdots        &     &        &         &        &     &     &        &         &     &        &     &        &         &       &        &           \cr
-u_{N-1}       &     &        &         &        &     &     &        &         &     &        &     &        &         &       &        &           \cr
-w_0           &     &        &         &        &     &     &        &         &     &        &     &        &         &       &        &           \cr
-\vdots        &     &        &         &        &     &     &        &         &     &        &     &        &         &       &        &           \cr
-w_i           &     &        &    \Bw  &        &     &     &        &         &     &        &     &        &         &       &        &           \cr
-\vdots        &     &        &         &        &     &     &        &         &     &        &     &        &         &       &        &           \cr
-w_{N-1}       &     &        &         &        &     &     &        &         &     &        &     &        &         &       &        &           \cr
-\nu_0         &     &        &         &        &     &     &        &         &     &        &     &        &         &       &        &           \cr
-\vdots        &     &        &         &        &     &     &        &         &     &        &     &        &         &       &        &           \cr
-\nu_{N-1}     &     &        &         &        &     &     &        &         &     &        &     &        &         &       &        &           \cr
+              & y_0 & \hdots & y_{i+1} & \hdots & y_N & u_0 & \hdots & u_{N-1} & w_0 & \hdots & w_i & \hdots & w_{N-1} \cr
+y_0           &     &        &         &        &     &     &        &         &     &        &     &        &         \cr
+\vdots        &     &        &         &        &     &     &        &         &     &        &     &        &         \cr
+y_{i+1}       &     &        &         &        &     &     &        &         &     &        & \Bwt&        &         \cr
+\vdots        &     &        &         &        &     &     &        &         &     &        &     &        &         \cr
+y_N           &     &        &         &        &     &     &        &         &     &        &     &        &         \cr
+u_0           &     &        &         &        &     &     &        &         &     &        &     &        &         \cr
+\vdots        &     &        &         &        &     &     &        &         &     &        &     &        &         \cr
+u_{N-1}       &     &        &         &        &     &     &        &         &     &        &     &        &         \cr
+w_0           &     &        &         &        &     &     &        &         &     &        &     &        &         \cr
+\vdots        &     &        &         &        &     &     &        &         &     &        &     &        &         \cr
+w_i           &     &        &    \Bw  &        &     &     &        &         &     &        &     &        &         \cr
+\vdots        &     &        &         &        &     &     &        &         &     &        &     &        &         \cr
+w_{N-1}       &     &        &         &        &     &     &        &         &     &        &     &        &         \cr
 }
 \end{equation}
-\end{tiny}
-for $k \in \{N n_y + 1, \hdots, 2 N n_y\}$ where $\Bw$ denotes the $j-$th row of the matrix $B_w$, i.e.
+\end{scriptsize}
+for $k \in \{1, \hdots, N n_y\}$ where $\Bw$ denotes the $j-$th row of the matrix $B_w$, i.e.
 we have 
 \begin{equation}
 \nabla^2 g_{k}(z)_{(N+1)n_y+N n_U+i+1,(i+1) n_y + l} = B_w(j,l)
 \end{equation}
-if $k = N n_y + i n_y + j$ with $i \in \{0, \hdots, N-1\}$ and $j,l \in \{1, \hdots, n_y\}$.
+if $k = i n_y + j$ with $i \in \{0, \hdots, N-1\}$ and $j,l \in \{1, \hdots, n_y\}$.
+The Hessian of the Lagrange functional is then given by
+\begin{equation}
+\sigma_f \nabla^2 J(z) + \sum_{k=1}^{N n_y} \lambda_k \nabla^2 g_k(z)
+\end{equation}
+see also \url{https://www.coin-or.org/Ipopt/documentation/node22.html}.
 
-NOTE: When the convection term is present, the jacobian and hessian matrices are no longer constant!
+NOTE: When the convection term is present, the Jacobian and Hessian matrices are no longer constant!
 
-NOTE: In Ipopt we could avoid introducing an additional variable and treat linear and nonlinear constraints jointly. This greatly reduces the dimension of the optimization variable and should be considered!
+NOTE: Before implementing the exact Hessian of the Lagrangian we should try using the Hessian of the objective function as an approximation and the approximation by a quasi-Newton method like BFGS (set the option \texttt{hessian\_approximation} to \texttt{limited-memory} for this, see \url{https://www.coin-or.org/Ipopt/documentation/node31.html}).
 
 \section{Example}
 Consider the following example. Let $\Omega$ be the unit interval $[0,1]$ and let $\Omega_y := [\frac{1}{4},\frac{3}{4}]$ and let $\Gamma_{out}$ be the left boundary (for $x=0$) and $\Gamma_c$ be the right boundary (for $x=1$). The domains and subdomains are illustrated in Figure \ref{fig:domain}.
