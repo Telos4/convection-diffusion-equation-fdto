@@ -134,11 +134,11 @@ function [Aeq, beq] = assemble_eq_constraints(params)
     
     Aeq = zeros(N * n_y, n_z);
     for i = 1:N
-        Aeq((i-1)*n_y+1:i*n_y,i*n_y+1:(i+1)*n_y) = A;
-        Aeq((i-1)*n_y+1:i*n_y,(i-1)*n_y+1:i*n_y) = -B_y;        
+        Aeq((i-1)*n_y+1:i*n_y, i*n_y+1:(i+1)*n_y) = A;
+        Aeq((i-1)*n_y+1:i*n_y, (i-1)*n_y+1:i*n_y) = -B_y;        
         Aeq((i-1)*n_y+1:i*n_y, (N+1)*n_y+(i-1)*n_u+1:(N+1)*n_y+i*n_u) = -b_u;
         Aeq((i-1)*n_y+1:i*n_y, (N+1)*n_y+N*n_u+N*n_w+(i-1)*n_y+1:(N+1)*n_y+N*n_u+N*n_w+i*n_v) = eye(n_v);
-    end
+    end   
     Aeq = sparse(Aeq);  % convert to sparse matrix
 
     % rhs is time varying data and initial value of x0
@@ -205,11 +205,11 @@ function [lb, ub] = assemble_state_control_constraints(params)
     % constraints for state
     for i = 2:N+1
         [lb_y, ub_y] = bounds(k, n_y);
-        lb(n_y * (i-1)+1:n_y*i) = lb_y;
-        ub(n_y * (i-1)+1:n_y*i) = ub_y;
+        lb(n_y * (i-1)+1:n_y*i) = params.lb_y * lb_y;
+        ub(n_y * (i-1)+1:n_y*i) = params.ub_y * ub_y;
     end
 
     % constraints for the control
-    lb((N+1)*n_y+1:(N+1)*n_y+N*n_u) = -0.25;
-    ub((N+1)*n_y+1:(N+1)*n_y+N*n_u) = 0.25;
+    lb((N+1)*n_y+1:(N+1)*n_y+N*n_u) = params.lb_u;
+    ub((N+1)*n_y+1:(N+1)*n_y+N*n_u) = params.ub_u;
 end
