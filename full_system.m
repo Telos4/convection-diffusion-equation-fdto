@@ -52,13 +52,15 @@ params.k = 0;
 % initial state
 y0 = 0.0 * ones(1, params.n_y);
 
-Ns = [1:1:25];
+plot_closed_loop = 1;
+
+Ns = [1:1:5];
 L = 100;
 J_cls = [];
 for i = 1:length(Ns)
     N = Ns(i)
     params.y0 = y0;
-    cl = closed_loop_simulation(params, N, L);
+    cl = closed_loop_simulation(params, N, L, plot_closed_loop);
     J_cls = [J_cls; cl];
 end
 

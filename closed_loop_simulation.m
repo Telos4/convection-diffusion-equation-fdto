@@ -1,4 +1,4 @@
-function [ approx_cl_cost ] = closed_loop_simulation( params, N, L )
+function [ approx_cl_cost ] = closed_loop_simulation( params, N, L, plot_closed_loop )
 
 % horizon length
 params.N = N;
@@ -40,52 +40,54 @@ else
 end
 disp(sprintf('approximate closed loop cost: %f', approx_cl_cost));
 
-% delete('heat.avi'); % delete video file to avoid errors
-% v = VideoWriter('heat.avi');
-% v.Quality = 100;
-% v.FrameRate = 10;
-% open(v);
-% figure(1);
-% 
-% ax = gca();
-% 
-% for i = 1:L
-%     [lb,ub] = bounds(0+i,params.n_y);
-%     lb = params.lb_y * lb;
-%     ub = params.ub_y * ub;
-%     
-%     plot(ax,(1:params.n_y)/params.n_y, lb, 'r'); hold on;
-%     plot(ax,(1:params.n_y)/params.n_y, ub, 'r');
-%     plot(ax,[0.95 1.0], [0.25 0.25], 'b');
-%     plot(ax,[0.95 1.0], [-0.25 -0.25], 'b');
-%     plot(ax,1/(2*params.n_y):1/params.n_y:1, y_cl(i,:), 'k');
-%     plot(ax,0,y_out(i),'r*');
-%     plot(ax,1,u_cl(i),'b*');
-%     % draw arrows for convection velocity
-% %     for j=1:2:params.n_y
-% %         vstart = [j/params.n_y y_cl(i,j)];
-% %         vend   = [j/params.n_y-0.001*sign(w_cl(i)) y_cl(i,j)];
-% % %         arrow(vstart, vend)
-% %     end
-%     axis([0 1 -0.5 0.5])
-% 
-%     xlabel('$x$ (Pos.)','interpreter','latex'); ylabel(['$y$ (Temp.)'],'interpreter','latex');
-%     set(ax,'TickLabelInterpreter','latex');
-%     text(0.8, 0.4, ['t = ' num2str(i/100)])
-%     
-%     if params.convection == 1
-%         text(0.8, 0.3, ['w = ' num2str(w_cl(i))])
-%     end
-%     hold off;
-%     
-%     drawnow();
-%     frame = getframe(gca);
-%     size(frame.cdata);
-%     writeVideo(v,frame);
-%      
-% end
-% 
-% close(v);
+if plot_closed_loop == 1
+    delete('heat.avi'); % delete video file to avoid errors
+    v = VideoWriter('heat.avi');
+    v.Quality = 100;
+    v.FrameRate = 10;
+    open(v);
+    figure(1);
+
+    ax = gca();
+
+    for i = 1:L
+        [lb,ub] = bounds(0+i,params.n_y);
+        lb = params.lb_y * lb;
+        ub = params.ub_y * ub;
+
+        plot(ax,(1:params.n_y)/params.n_y, lb, 'r'); hold on;
+        plot(ax,(1:params.n_y)/params.n_y, ub, 'r');
+        plot(ax,[0.95 1.0], [0.25 0.25], 'b');
+        plot(ax,[0.95 1.0], [-0.25 -0.25], 'b');
+        plot(ax,1/(2*params.n_y):1/params.n_y:1, y_cl(i,:), 'k');
+        plot(ax,0,y_out(i),'r*');
+        plot(ax,1,u_cl(i),'b*');
+        % draw arrows for convection velocity
+    %     for j=1:2:params.n_y
+    %         vstart = [j/params.n_y y_cl(i,j)];
+    %         vend   = [j/params.n_y-0.001*sign(w_cl(i)) y_cl(i,j)];
+    % %         arrow(vstart, vend)
+    %     end
+        axis([0 1 -0.5 0.5])
+
+        xlabel('$x$ (Pos.)','interpreter','latex'); ylabel(['$y$ (Temp.)'],'interpreter','latex');
+        set(ax,'TickLabelInterpreter','latex');
+        text(0.8, 0.4, ['t = ' num2str(i/100)])
+
+        if params.convection == 1
+            text(0.8, 0.3, ['w = ' num2str(w_cl(i))])
+        end
+        hold off;
+
+        drawnow();
+        frame = getframe(gca);
+        size(frame.cdata);
+        writeVideo(v,frame);
+
+    end
+
+    close(v);
+end
 
 end
 
