@@ -198,7 +198,7 @@ We end up with a finite dimensional optimal control problem which reads:
 \end{align*}
 where $\mathcal{I}_{\Omega_y}$ is the set of all indices with finite element nodes within the set $\Omega_y$. When using Lagrange finite elements the degrees of freedom of the FE approximation $y_h$ of the state $y$ correspond to the value of $y_h$ at the finite element nodes. This means we can enforce the state constraint pointwise at the finite element nodes, simply by constraining the corresponding elements of $y_h$. \\
 
-In the following it is described how the open-loop optimal control problems are solved in MATLAB with its \texttt{fmincon} solver and in C++ with Ipopt ,respectively. The implementations are slightly different. In MATLAB linear and nonlinear constraints can be treated seperately. For easier implementation we introduced an additional variable for the nonlinear part of the state equation.\\
+In the following it is described how the open-loop optimal control problems are solved in MATLAB with its \texttt{fmincon} solver and in C++ with Ipopt, respectively. The implementations are slightly different. In MATLAB linear and nonlinear constraints can be treated seperately. For easier implementation we introduced an additional variable for the nonlinear part of the state equation.\\
 In Ipopt this is not necessary, because linear constraints are not treated any different than nonlinear constraints in the problem formulation required by the solver.
 \subsection{Implementation in MATLAB}
 Introducing $z = (y_h, u, w, \nu) \in \mathbb{R}^{n_z}$, where $n_z = (N+1)n_y + N n_u  + N n_w + N n_y$ the equality constraint of the optimization problem can be written as a single linear equation 
@@ -294,10 +294,10 @@ J_{c_{eq}}(z) =
 
 For implementation in MATLAB this is all that is necessary for the optimization to run.
 
-NOTE: Only the Hessian of the objective function is used in the implementation. I tried to use the Hessian of the Lagrange Function, but could not observe a speedup which is why if refrain from going into any more detail here. The Hessian of the objective function seems to be a close enough approximation that the speedup the exact Hessian could provide is offset by the effort it takes to compute it. However, I did not try to optimize the way the Hessian of the Lagrange function is computed, so there may still be some way for improvement here. I chose not to do this, because the MATLAB implementation will hardly be able to compete with the C++ implementation anyway.
+NOTE: Only the Hessian of the objective function is used in the implementation. I tried to use the Hessian of the Lagrange Function, but could not observe a speedup which is why I refrain from going into any more detail here. The Hessian of the objective function seems to be a close enough approximation that the speedup the exact Hessian could provide is offset by the effort it takes to compute it. However, I did not try to optimize the way the Hessian of the Lagrange function is computed, so there may still be some way for improvement here. I chose not to do this, because the MATLAB implementation will hardly be able to compete with the C++ implementation anyway.
 
 \subsection{Implementation in C++}
-In the Ipopt implementation the optimization variable is $z = (y_h, u, w) \in \mathbb{R}^{n_z}$, where $n_z = (N+1)n_y + N n_u  + N n_w$. Here we implement the nonlinear system dynamics directly, without introducing an additional variable as we did in the MATLAB implementation. The function the the nonlinear constraints is given by
+In the Ipopt implementation the optimization variable is $z = (y_h, u, w) \in \mathbb{R}^{n_z}$, where $n_z = (N+1)n_y + N n_u  + N n_w$. Here we implement the nonlinear system dynamics directly, without introducing an additional variable as we did in the MATLAB implementation. The function for the nonlinear constraints is given by
 \begin{equation}
 g(z) =
 \begin{pmatrix}
