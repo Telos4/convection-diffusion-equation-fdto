@@ -1,67 +1,74 @@
 clc;
 close all;
-
-global n_y;
-global n_u;
-global epsilon;
+clear all;
 
 load('sys.mat')
 
-A;
-B_y;
-b_u = b_u(:);
-b_y_out = b_y_out(:);
+params = {};
 
-n_y = size(A,1);
-n_u = 1;
-epsilon = 0.001;
+% system matrices
+params.A = A;
+params.B_y = B_y;
+params.b_u = b_u(:);
+params.b_y_out = b_y_out(:);
 
-k = 0;
-y0 = 0.5 * ones(1, n_y);
+% dimensions
+params.n_y = size(A,1);
+params.n_u = 1;
 
-N = 10;
+% parameters for optimization
+params.y_ref = 0.0 * ones(params.n_y,1);
+params.u_ref = 0.0 * ones(params.n_u,1);
 
-L = 50;
+% weights for objective function
+params.epsilon_y = 0.0;
+params.epsilon_u = 1.0;
 
-y_out = zeros(N+L,1);
-for i = 1:N+L
-    y_out(i) = 0.5 + 0.3 * sin(0.1 * i);
+params.lb_u = -0.25;
+params.ub_u =  0.25;
+
+params.lb_y = -0.15;
+params.ub_y = 0.15;
+
+% additional parameters for control by convection term
+params.convection = 1;
+if params.convection == 1
+    params.B_w = B_w;
+    params.n_w = 1;
+    params.n_v = params.n_y;
+    params.w_ref = 0.0 * ones(params.n_w,1);
+    params.epsilon_w = 1.0;
+else
+    params.n_w = 0;
+    params.n_v = 0;
+    params.B_w = zeros(params.n_v, params.n_v); % empty matrix
+    params.w_ref = 0.0 * ones(params.n_w,1);    % empty matrix
+    params.epsilon_w = 0.0;
 end
 
-y_cl = [y0];
-for j = 1:L
-    [u_ol, y_ol] = ocp_full_discretization(k+j, N, y0, A, B_y, b_u, b_y_out, y_out(j:j+N-1));
-    
-    u_ol(1)
-    
-    y0 = y_ol(2,:);
-    
-    y_cl = [y_cl; fliplr(y0)];
+% initial time
+params.k = 0;
+
+% initial state
+y0 = 0.0 * ones(1, params.n_y);
+
+plot_closed_loop = 1;
+
+Ns = [1:1:5];
+L = 100;
+J_cls = [];
+for i = 1:length(Ns)
+    N = Ns(i)
+    params.y0 = y0;
+    cl = closed_loop_simulation(params, N, L, plot_closed_loop);
+    J_cls = [J_cls; cl];
 end
 
-v = VideoWriter('heat.avi');
-v.Quality = 100;
-%v.LosslessCompression = true
-v.FrameRate = 10;
-open(v);
-figure(1);
-%F(L) = struct('cdata',[],'colormap',[]);
-for i = 1:L
-    [lb,ub] = bounds(k+i,n_y);
-    plot((1:n_y)/n_y, lb, 'r'); hold on;
-    plot((1:n_y)/n_y, ub, 'r');
-    plot([0.95 1.0], [0.25 0.25], 'b');
-    plot([0.95 1.0], [0.75 0.75], 'b');
-    plot(1/(2*n_y):1/n_y:1, y_cl(i,:), 'k');
-    axis([0 1 0 1])
-    
-    xlabel('$x$ (Pos.)','interpreter','latex'); ylabel(['$y$ (Temp.)'],'interpreter','latex');
-    set(gca,'TickLabelInterpreter','latex');
-    text(0.8, 0.9, ['t = ' num2str(i/100)])
-    
-    frame = getframe(gcf);
-    writeVideo(v,frame);
-     hold off;
-end
-
-close(v);
+figure;
+plot(Ns, J_cls)
+xlim([Ns(1) Ns(end)])
+xlabel('N','interpreter','latex'); ylabel(['$J^{cl}_{' num2str(L) '}(0, 0, \mu_N)$'],'interpreter','latex');
+set(gca,'TickLabelInterpreter','latex');
+set(gcf, 'PaperPosition', [0 0 15 7]); %Position plot at left hand corner with width 5 and height 5.
+set(gcf, 'PaperSize', [15 7]);
+saveas(gcf, 'closed-loop-cost', 'pdf')
