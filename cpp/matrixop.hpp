@@ -22,7 +22,7 @@ public:
 
     MATRIXOP();
     MATRIXOP(int N_, string file_A, string file_B, string file_b_u, string file_b_y,
-            double eps_, double y_ref_, double u_ref_);
+            double eps_, double y_ref_, double u_ref_, bool closed_values, bool open_values);
 
 
     /** Default destructor */
@@ -52,6 +52,9 @@ public:
     valarray<double> A_vals, B_vals, A_eq_vals, b_u, b_y, y_old, u_old;
     int n_y, n_u, n_z, N, iter;
     double eps, y_ref, u_ref, closed_loop_cost;
+    
+    bool closed_values, open_values;
+    //string closed_file, open_file;
 private:
 
 

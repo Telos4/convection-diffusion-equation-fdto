@@ -15,7 +15,7 @@ MATRIXOP::MATRIXOP() {
 }
 
 MATRIXOP::MATRIXOP(int N_, string file_A, string file_B, string file_b_u, string file_b_y,
-        double eps_, double y_ref_, double u_ref_) {
+        double eps_, double y_ref_, double u_ref_, bool closed_values_, bool open_values_) {
     read_matrix(file_A, A_rows, A_cols, A_vals);
     read_matrix(file_B, B_rows, B_cols, B_vals);
     read_vector(file_b_u, b_u);
@@ -55,6 +55,11 @@ MATRIXOP::MATRIXOP(int N_, string file_A, string file_B, string file_b_u, string
     
     
     closed_loop_cost = 0;
+    
+    closed_values = closed_values_;
+    open_values = open_values_;
+    //closed_file = closed_file_;
+    //open_file = open_file_;
 }
 
 
@@ -66,12 +71,15 @@ MATRIXOP::~MATRIXOP() {
 //todo skip comments in .mtx files
 
 void MATRIXOP::read_matrix(string filename, valarray<int> &rows, valarray<int> &cols, valarray<double> &vals) {
-    //ifstream input(filename);
     ifstream ifs(filename.c_str(), ifstream::in);
 
     if (ifs.is_open()) {
 	//skip comments in .mtx files 
+	string trash;
 
+	getline(ifs, trash);
+	getline(ifs, trash);
+	
 	int n, i = 0;
         //third value in file is size
         ifs >> n >> n >> n;
@@ -111,13 +119,13 @@ void MATRIXOP::read_vector(string filename, valarray<double> &vals) {
 }
 
 void MATRIXOP::print_matrix(valarray<int> &rows, valarray<int> &cols, valarray<double> &vals) const {
-    for (int i = 0; i < rows.size(); ++i) {
+    for (unsigned i = 0; i < rows.size(); ++i) {
         cout << rows[i] << " " << cols[i] << " " << vals[i] << endl;
     }
 }
 
 void MATRIXOP::print_vector(valarray<double> &vals) const {
-    for (int i = 0; i < vals.size(); ++i) {
+    for (unsigned i = 0; i < vals.size(); ++i) {
         cout << vals[i] << endl;
     }
 }
@@ -141,7 +149,7 @@ double MATRIXOP::eval_f(valarray<double> &x) {
 
 double MATRIXOP::vec_Q_vec(valarray<double> y, double y_ref) {
     double re = 0;
-    for (int i = 0; i < y.size(); ++i) {
+    for (unsigned i = 0; i < y.size(); ++i) {
         re += (y[i] - y_ref)*(y[i] - y_ref);
     }
 
@@ -150,7 +158,7 @@ double MATRIXOP::vec_Q_vec(valarray<double> y, double y_ref) {
 
 double MATRIXOP::vec_R_vec(valarray<double> y, double y_ref) {
     double re = 0;
-    for (int i = 0; i < y.size(); ++i) {
+    for (unsigned i = 0; i < y.size(); ++i) {
         re += (y[i] - y_ref)*(y[i] - y_ref);
     }
 
@@ -175,7 +183,7 @@ valarray<double> MATRIXOP::eval_grad_f(valarray<double> z) {
 valarray<double> MATRIXOP::Q_vec(valarray<double> y) {
     valarray<double> re(y.size());
 
-    for (int i = 0; i < y.size(); ++i) {
+    for (unsigned i = 0; i < y.size(); ++i) {
         re[i] = y[i] - y_ref;
     }
 
@@ -185,7 +193,7 @@ valarray<double> MATRIXOP::Q_vec(valarray<double> y) {
 valarray<double> MATRIXOP::R_vec(valarray<double> u) {
     valarray<double> re(u.size());
 
-    for (int i = 0; i < u.size(); ++i) {
+    for (unsigned i = 0; i < u.size(); ++i) {
         re[i] = u[i] - u_ref;
     }
     return re;

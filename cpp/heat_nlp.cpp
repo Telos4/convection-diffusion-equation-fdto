@@ -236,9 +236,10 @@ void HEAT_NLP::finalize_solution(SolverReturn status,
 	const IpoptData* ip_data,
 	IpoptCalculatedQuantities * ip_cq) {
 
-    //count for outer loop
+    //count for closed loop
     ++data.iter;
-
+    
+    //save result for next optimization step
     for (int i = 0; i < (data.N + 1) * data.n_y; ++i) {
 	data.y_old[i] = x[i];
     }
@@ -247,52 +248,52 @@ void HEAT_NLP::finalize_solution(SolverReturn status,
     }
 
 
-
-    //open loop values
-    
-    string filename_y = "results50/openloop_y" + std::to_string(data.iter) + ".txt";
-    //string filename_u = "results/openloop_u" + std::to_string(data.iter) + ".txt";
-    ofstream ofs_y_open(filename_y);
-    //ofstream ofs_u_open(filename_u);
-    
-    for (int k = 0; k < data.N + 1; ++k) {
-	for (int i = 0; i < data.n_y; ++i) {
-	    ofs_y_open << x[k * data.n_y + i] << " ";
-	}
-	ofs_y_open << endl;
-    }
-    
-    /*
-    for (int k = 0; k < data.N; ++k) {
-	for (int i = 0; i < data.n_u; ++i) {
-	    ofs_u_open << x[(data.N + 1) * data.n_y + k * data.n_u + i] << " ";
-	}
-	ofs_u_open << endl;
-    }
-
-    ofs_u_open.close();
-    */
-    ofs_y_open.close();
-    
-    
-    /*   
-    ofstream ofs_y("solution_y.txt", ofstream::app);
-    ofstream ofs_u("solution_u.txt", ofstream::app);
     //closed loop values
+    if (data.closed_values) {
+	ofstream ofs_y("solution_y.txt", ofstream::app);
+	ofstream ofs_u("solution_u.txt", ofstream::app);
 
-    for (int i = 0; i < data.n_y; ++i) {
-	ofs_y << x[data.n_y + i] << " ";
+	for (int i = 0; i < data.n_y; ++i) {
+	    ofs_y << x[data.n_y + i] << " ";
+	}
+	ofs_y << endl;
+
+	for (int i = 0; i < data.n_u; ++i) {
+	    ofs_u << x[(data.N + 1) * data.n_y + i] << " ";
+	}
+	ofs_u << endl;
+
+	ofs_y.close();
+	ofs_u.close();
     }
-    ofs_y << endl;
+    
+    
+    //open loop values
+    if (data.open_values) {
+	string filename_y = "../results/results" + std::to_string(data.N) + "/openloop_y" + std::to_string(data.iter) + ".txt";
+	//string filename_u = "../results/results" + std::to_string(data.N) + "/openloop_u" + std::to_string(data.iter) + ".txt";
+	ofstream ofs_y_open(filename_y);
+	//ofstream ofs_u_open(filename_u);
 
-    for (int i = 0; i < data.n_u; ++i) {
-	ofs_u << x[(data.N + 1) * data.n_y + i] << " ";
+	for (int k = 0; k < data.N + 1; ++k) {
+	    for (int i = 0; i < data.n_y; ++i) {
+		ofs_y_open << x[k * data.n_y + i] << " ";
+	    }
+	    ofs_y_open << endl;
+	}
+
+	/*
+	for (int k = 0; k < data.N; ++k) {
+	    for (int i = 0; i < data.n_u; ++i) {
+		ofs_u_open << x[(data.N + 1) * data.n_y + k * data.n_u + i] << " ";
+	    }
+	    ofs_u_open << endl;
+	}
+	 */
+	ofs_y_open.close();
+	//ofs_u_open.close(); 
     }
-    ofs_u << endl;
 
-    ofs_y.close();
-    ofs_u.close();
-     */
 
     //closed loop cost
     valarray<double> x_new(data.n_y);
