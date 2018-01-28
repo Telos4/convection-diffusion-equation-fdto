@@ -42,13 +42,9 @@ class VelocityFieldExpression(Expression):
         return (1,)
 
 def output_matrices():
-<<<<<<< HEAD
     # Define function space
     parameters.linear_algebra_backend = "Eigen"
 
-=======
-    # Define function spaces
->>>>>>> master
     U = FunctionSpace(mesh, "Lagrange", 1)
     W = VectorFunctionSpace(mesh, 'P', 1, dim=1)
 
@@ -82,12 +78,12 @@ def output_matrices():
     b_y_out = assemble(f_y_out)
 
     # output matrices for use in matlab optimization
-<<<<<<< HEAD
-    #scipy.io.savemat('sys.mat', {'A': A.array(), 'B_y': B_y.array(), 'b_u': b_u.array(), 'b_y_out': b_y_out.array(),})
-    #scipy.io.mmwrite('A.mtx', A.matrix())
 
     A_re = as_backend_type(A).sparray()
     scipy.io.mmwrite("A.mtx", A_re, symmetry="general")
+
+    B_w_re = as_backend_type(B_w).sparray()
+    scipy.io.mmwrite("B_w.mtx", B_w_re, symmetry="general")
 
     B_y_re = as_backend_type(B_y).sparray()
     scipy.io.mmwrite("B_y.mtx", B_y_re, symmetry="general")
@@ -105,10 +101,7 @@ def output_matrices():
     for val in b_y_out_re:
         b_y_out_file.write(str(val) + "\n")
     b_y_out_file.close()
-=======
-    scipy.io.savemat('sys.mat', {'A': A.array(), 'B_y': B_y.array(), 'B_w': B_w.array(), 'b_u': b_u.array(), 'b_y_out': b_y_out.array(),
-                                 })
->>>>>>> master
+
 
     return b_u, b_y_out
 
