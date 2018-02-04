@@ -27,9 +27,7 @@ MATRIXOP::MATRIXOP(int N_, string file_A, string file_B_y, string file_B_w, stri
     }
 
     N = N_;
-
     n_y = b_u.size();
-
     n_u = 1;
 
     if (convection) {
@@ -46,41 +44,54 @@ MATRIXOP::MATRIXOP(int N_, string file_A, string file_B_y, string file_B_w, stri
     u_ref = u_ref_;
 
     iter = 0;
-
-    A_eq();
-
-    y_old.resize((N + 1) * n_y);
-    u_old.resize(N * n_u);
-    for (int i = 0; i < (N + 1) * n_y; ++i) {
-	y_old[i] = 0.5;
-    }
-    for (int i = 0; i < N * n_u; ++i) {
-	u_old[i] = 0.5;
-    }
-    if (convection) {
-	w_old.resize(N * n_w);
-
-	for (int i = 0; i < N * n_u; ++i) {
-	    w_old[i] = 0.0;
-	}
-    }
-
-
-    //delete old results
-    ofstream del1("solution_y.txt", ofstream::trunc);
-    ofstream del2("solution_u.txt", ofstream::trunc);
-    ofstream del3("solution_w.txt", ofstream::trunc);
-    del1.close();
-    del2.close();
-    del3.close();
-
-
     closed_loop_cost = 0;
 
     closed_values = closed_values_;
     open_values = open_values_;
-    //closed_file = closed_file_;
-    //open_file = open_file_;
+
+    //initialize A_eq
+    A_eq();
+
+    y_old.resize((N + 1) * n_y);
+    u_old.resize(N * n_u);
+
+    //start the optimization at the reference solution
+    for (int i = 0; i < (N + 1) * n_y; ++i) {
+	y_old[i] = y_ref;
+    }
+    for (int i = 0; i < N * n_u; ++i) {
+	u_old[i] = u_ref;
+    }
+    if (convection) {
+	w_old.resize(N * n_w);
+	for (int i = 0; i < N * n_w; ++i) {
+	    w_old[i] = 0.0;
+	}
+    }
+    time_t t = time(0); // get time now
+    struct tm * now = localtime(& t);
+
+    foldername = "../results/" + to_string(now->tm_year + 1900) + "-" + to_string(now->tm_mon + 1) + "-" + to_string(now->tm_mday)
+	    + "_" + to_string(now->tm_hour) + "-" + to_string(now->tm_min) + "-" + to_string(now->tm_sec) + "/";
+
+    if (closed_values || open_values) {
+	//cout << boost::filesystem::current_path().string() << endl;
+	boost::filesystem::path p(foldername);
+
+	//create results folder first, cant create subdirectories directly?
+	try {
+	    boost::filesystem::create_directory("../results");
+	}
+	catch (boost::filesystem::filesystem_error &e) {
+	    std::cerr << e.what() << '\n';
+	}
+	try {
+	    boost::filesystem::create_directory(p);
+	}
+	catch (boost::filesystem::filesystem_error &e) {
+	    std::cerr << e.what() << '\n';
+	}
+    }
 }
 
 
@@ -88,8 +99,6 @@ MATRIXOP::MATRIXOP(int N_, string file_A, string file_B_y, string file_B_w, stri
 
 MATRIXOP::~MATRIXOP() {
 }
-
-//todo skip comments in .mtx files
 
 void MATRIXOP::read_matrix(string filename, valarray<int> &rows, valarray<int> &cols, valarray<double> &vals) {
     ifstream ifs(filename.c_str(), ifstream::in);
@@ -156,18 +165,17 @@ void MATRIXOP::print_vector(valarray<double> &vals) const {
 double MATRIXOP::eval_f(valarray<double> &x) {
     double re = 0;
 
-
     //sum over yQy
     for (int k = 0; k < N + 1; ++k) {
 	re += eps * 0.5 * vec_Q_vec(x[slice(k*n_y, n_y, 1)], y_ref);
     }
-    //sum over uRu, forgot that u is scalar for now
+    //sum over uRu
     for (int k = 0; k < N; ++k) {
 	re += 0.5 * vec_R_vec(x[slice((N + 1) * n_y + k*n_u, n_u, 1)], u_ref);
     }
 
     if (convection) {
-	//sum over wWw, forgot that u is scalar for now
+	//sum over wWw
 	for (int k = 0; k < N; ++k) {
 	    re += 0.5 * vec_W_vec(x[slice((N + 1) * n_y + N * n_u + k*n_w, n_w, 1)]);
 	}
@@ -273,7 +281,6 @@ void MATRIXOP::A_eq() {
 		A_eq_vals[count] = -1 * B_y_vals[countB];
 		++count;
 		++countB;
-
 	    }
 
 	    while (countA != size_A && A_rows[countA] == k) {

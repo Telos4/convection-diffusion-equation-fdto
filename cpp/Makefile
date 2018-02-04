@@ -19,10 +19,10 @@ OBJS = heat_nlp.o \
 	matrixop.o
 
 # CHANGEME: Additional libraries
-ADDLIBS =
+ADDLIBS = -lboost_filesystem -lboost_system
 
 # CHANGEME: Additional flags for compilation (e.g., include flags)
-ADDINCFLAGS =
+ADDINCFLAGS = 
 
 ##########################################################################
 #  Usually, you don't have to change anything below.  Note that if you   #
@@ -33,10 +33,10 @@ ADDINCFLAGS =
 CXX = g++
 
 # C++ Compiler options
-CXXFLAGS = -std=c++11 -O3 -pipe -DNDEBUG -Wparentheses -Wreturn-type -Wcast-qual -Wall -Wpointer-arith -Wwrite-strings -Wconversion -Wno-unknown-pragmas -Wno-long-long   -DIPOPT_BUILD
+CXXFLAGS = -std=c++11 -O3 -g -pipe -DNDEBUG -Wparentheses -Wreturn-type -Wcast-qual -Wall -Wpointer-arith -Wwrite-strings -Wconversion -Wno-unknown-pragmas -Wno-long-long   -DIPOPT_BUILD
 
 # additional C++ Compiler options for linking
-CXXLINKFLAGS =  -Wl,--rpath -Wl,/home/martin/CoinIpopt/build/lib
+CXXLINKFLAGS =  -Wl,--rpath -Wl,/home/martin/CoinIpopt/build/lib 
 
 # Include directories (we use the CYGPATH_W variables to allow compilation with Windows compilers)
 INCL = `PKG_CONFIG_PATH=/home/martin/CoinIpopt/build/lib64/pkgconfig:/home/martin/CoinIpopt/build/lib/pkgconfig:/home/martin/CoinIpopt/build/share/pkgconfig: pkg-config --cflags ipopt` $(ADDINCFLAGS)

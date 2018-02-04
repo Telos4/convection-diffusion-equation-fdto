@@ -8,11 +8,15 @@
 #ifndef MATRIXOP_HPP_
 #define MATRIXOP_HPP_
 
+
+#include "boost/filesystem.hpp"
+
 #include <valarray>
 #include <string>
 #include <fstream>
 #include <cassert>
 #include <iostream>
+#include <ctime>
 
 
 using namespace std;
@@ -56,7 +60,7 @@ public:
     double eps, y_ref, u_ref, closed_loop_cost;
     
     bool convection, closed_values, open_values;
-    //string closed_file, open_file;
+    string foldername;
 private:
 
 

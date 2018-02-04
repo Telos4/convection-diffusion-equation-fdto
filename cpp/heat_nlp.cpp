@@ -23,13 +23,6 @@ double eval_y_out(int i);
 HEAT_NLP::~HEAT_NLP() {
 }
 
-/*
-HEAT_NLP::HEAT_NLP(int N_, string file_A, string file_B, string file_b_u, string file_b_y,
-	double eps, double y_ref, double u_ref)
-: data(N_, file_A, file_B, file_b_u, file_b_y, eps, y_ref, u_ref) {
-}
- */
-
 HEAT_NLP::HEAT_NLP(MATRIXOP &data_)
 : data(data_) {
 
@@ -38,14 +31,11 @@ HEAT_NLP::HEAT_NLP(MATRIXOP &data_)
 bool HEAT_NLP::get_nlp_info(Index& n, Index& m, Index& nnz_jac_g,
 	Index& nnz_h_lag, IndexStyleEnum& index_style) {
 
-    cout << "crash info" << endl;
-
-
     n = data.n_z;
     m = data.N * data.n_y;
 
     if (data.convection) {
-	//need to compare A and B_w, always the same size??
+	//need to compare A and B_w, always the same size?
 	nnz_jac_g = (data.B_y_rows.size() + data.A_rows.size() + data.b_u.size() + data.n_y) * data.N;
     }
     else {
@@ -66,12 +56,11 @@ bool HEAT_NLP::get_nlp_info(Index& n, Index& m, Index& nnz_jac_g,
 bool HEAT_NLP::get_bounds_info(Index n, Number* x_l, Number* x_u,
 	Index m, Number* g_l, Number* g_u) {
 
-    cout << "crash bounds" << endl;
 
-    double u_upper = 0.75;
-    double u_lower = 0.25;
-    double y_upper = 0.65;
-    double y_lower = 0.35;
+    double u_upper = 0.25;
+    double u_lower = -0.25;
+    double y_upper = 0.15;
+    double y_lower = -0.15;
     double inf = 1e19;
     Index left = floor(data.n_y / 4);
     //Index right = (int) (data.n_y * 3 / 4);
@@ -142,7 +131,7 @@ bool HEAT_NLP::get_bounds_info(Index n, Number* x_l, Number* x_u,
 //where to put this function?
 
 double eval_y_out(int i) {
-    return 0.5 + 0.292 * sin(0.1 * i);
+    return 0.3 * sin(0.1 * i);
 }
 //Lösung vom letzten
 
@@ -259,7 +248,7 @@ bool HEAT_NLP::eval_jac_g(Index n, const Number* x, bool new_x,
 	//size A = size B_w for now
 	long size_A = data.A_rows.size();
 
-	assert(size_A == data.B_w_rows);
+	assert(size_A == data.B_w_rows.size());
 
 	//set pattern
 	if (values == NULL) {
@@ -366,6 +355,11 @@ bool HEAT_NLP::eval_h(Index n, const Number* x, bool new_x,
 	bool new_lambda, Index nele_hess,
 	Index* iRow, Index* jCol, Number * values) {
     assert(data.n_z == n);
+
+    if (data.convection) {
+	return false;
+    }
+
     if (values == NULL) {
 	for (int i = 0; i < data.n_z; ++i) {
 	    iRow[i] = i;
@@ -382,9 +376,6 @@ bool HEAT_NLP::eval_h(Index n, const Number* x, bool new_x,
 	}
     }
 
-    if (data.convection) {
-	return false;
-    }
     return true;
 }
 
@@ -395,8 +386,7 @@ void HEAT_NLP::finalize_solution(SolverReturn status,
 	const IpoptData* ip_data,
 	IpoptCalculatedQuantities * ip_cq) {
 
-    //count for closed loop
-    ++data.iter;
+
 
     //save result for next optimization step
     for (int i = 0; i < (data.N + 1) * data.n_y; ++i) {
@@ -411,63 +401,6 @@ void HEAT_NLP::finalize_solution(SolverReturn status,
 	    data.w_old[i] = x[(data.N + 1) * data.n_y + data.N * data.n_u + i];
 	}
     }
-
-
-    //closed loop values
-    if (data.closed_values) {
-	ofstream ofs_y("solution_y.txt", ofstream::app);
-	ofstream ofs_u("solution_u.txt", ofstream::app);
-
-	for (int i = 0; i < data.n_y; ++i) {
-	    ofs_y << x[data.n_y + i] << " ";
-	}
-	ofs_y << endl;
-
-	for (int i = 0; i < data.n_u; ++i) {
-	    ofs_u << x[(data.N + 1) * data.n_y + i] << " ";
-	}
-	ofs_u << endl;
-
-	ofs_y.close();
-	ofs_u.close();
-
-	if (data.convection) {
-	    ofstream ofs_w("solution_w.txt", ofstream::app);
-	    for (int i = 0; i < data.n_w; ++i) {
-		ofs_w << x[(data.N + 1) * data.n_y + data.N * data.n_u + i] << " ";
-	    }
-	    ofs_w << endl;
-	    ofs_w.close();
-	}
-    }
-
-
-    //open loop values
-    if (data.open_values) {
-	string filename_y = "../results/results" + std::to_string(data.N) + "/openloop_y" + std::to_string(data.iter) + ".txt";
-	//string filename_u = "../results/results" + std::to_string(data.N) + "/openloop_u" + std::to_string(data.iter) + ".txt";
-	ofstream ofs_y_open(filename_y);
-	//ofstream ofs_u_open(filename_u);
-
-	for (int k = 0; k < data.N + 1; ++k) {
-	    for (int i = 0; i < data.n_y; ++i) {
-		ofs_y_open << x[k * data.n_y + i] << " ";
-	    }
-	    ofs_y_open << endl;
-	}
-
-	/*
-	for (int k = 0; k < data.N; ++k) {
-	    for (int i = 0; i < data.n_u; ++i) {
-		ofs_u_open << x[(data.N + 1) * data.n_y + k * data.n_u + i] << " ";
-	    }
-	    ofs_u_open << endl;
-	}
-	 */
-	ofs_y_open.close();
-	//ofs_u_open.close(); 
-    }
-
 
     //closed loop cost
     valarray<double> x_new(data.n_y);
@@ -489,5 +422,84 @@ void HEAT_NLP::finalize_solution(SolverReturn status,
 
 	data.closed_loop_cost += 0.5 * data.vec_W_vec(w_new);
     }
+
+    
+    
+    //closed loop values
+    if (data.closed_values) {
+	ofstream ofs_y(data.foldername + "closedloop_y.txt", ofstream::app);
+	ofstream ofs_u(data.foldername + "closedloop_u.txt", ofstream::app);
+	ofstream ofs_cost(data.foldername + "closedloop_cost.txt", ofstream::app);
+
+	for (int i = 0; i < data.n_y; ++i) {
+	    ofs_y << x[data.n_y + i] << " ";
+	}
+	ofs_y << endl;
+
+	for (int i = 0; i < data.n_u; ++i) {
+	    ofs_u << x[(data.N + 1) * data.n_y + i] << " ";
+	}
+	ofs_u << endl;
+
+	ofs_cost << data.closed_loop_cost << endl;
+
+	ofs_y.close();
+	ofs_u.close();
+	ofs_cost.close();
+
+
+
+	if (data.convection) {
+	    ofstream ofs_w(data.foldername + "closedloop_w.txt", ofstream::app);
+	    for (int i = 0; i < data.n_w; ++i) {
+		ofs_w << x[(data.N + 1) * data.n_y + data.N * data.n_u + i] << " ";
+	    }
+	    ofs_w << endl;
+	    ofs_w.close();
+	}
+    }
+
+
+    //open loop values
+    if (data.open_values) {
+	string filename_y = data.foldername + "openloop_y" + std::to_string(data.iter) + ".txt";
+	string filename_u = data.foldername + "openloop_u" + std::to_string(data.iter) + ".txt";
+	ofstream ofs_y_open(filename_y, ofstream::trunc);
+	ofstream ofs_u_open(filename_u, ofstream::trunc);
+
+	for (int k = 0; k < data.N + 1; ++k) {
+	    for (int i = 0; i < data.n_y; ++i) {
+		ofs_y_open << x[k * data.n_y + i] << " ";
+	    }
+	    ofs_y_open << endl;
+	}
+
+
+	for (int k = 0; k < data.N; ++k) {
+	    for (int i = 0; i < data.n_u; ++i) {
+		ofs_u_open << x[(data.N + 1) * data.n_y + k * data.n_u + i] << endl;
+	    }
+	}
+
+	ofs_y_open.close();
+	ofs_u_open.close();
+
+	if (data.convection) {
+	    string filename_w = data.foldername + "openloop_w" + std::to_string(data.iter) + ".txt";
+	    ofstream ofs_w_open(filename_w, ofstream::trunc);
+	    for (int k = 0; k < data.N; ++k) {
+		for (int i = 0; i < data.n_w; ++i) {
+		    ofs_w_open << x[(data.N + 1) * data.n_y + data.N * data.n_u + k * data.n_u + i] << endl;
+		}
+	    }
+	    ofs_w_open.close();
+	}
+    }
+
+
+
+
+    //count for closed loop
+    ++data.iter;
 }
 
