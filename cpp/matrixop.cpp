@@ -26,7 +26,12 @@ MATRIXOP::MATRIXOP(int N_, string file_A, string file_B_y, string file_B_w, stri
 	read_matrix(file_B_w, B_w_rows, B_w_cols, B_w_vals);
     }
 
+    if (N_ == 0) {
+	cout << "N = 0 does not make sense, exiting" << endl;
+	exit(1);
+    }
     N = N_;
+
     n_y = b_u.size();
     n_u = 1;
 

@@ -52,7 +52,7 @@ int main(int argc, char** argv) {
     args::Flag open_values_(parser, "open values", "save states of all open loop",{"ov", "openvalues"});
     args::Flag cost_vs_horizon_(parser, "cost vs mpc horizon plot",
 	    "create data for cost vs mpc horizon plot, closed and open loop values will not be written, MPC_horizon functions as your maximal MPC horizon",{"cost_vs_horizon"});
-    args::ValueFlag<int> MPC_horizon_(parser, "mpc horizon", "MPC horizon",{'N', "mpc"});
+    args::ValueFlag<int> MPC_horizon_(parser, "mpc horizon", "MPC horizon, N >= 1",{'N', "mpc"});
     args::ValueFlag<int> steps_(parser, "steps", "closed loop step count",{'L', "steps"});
     args::ValueFlag<int> outputlevel_(parser, "outputlevel", "outputlevel of IPopt",{"output"});
     args::ValueFlag<double> eps_(parser, "epsilon", "epsilon from cost functional",{'e', "eps"});
@@ -214,7 +214,7 @@ void closed_cost_vs_horizon_length(int max_MPC_horizon, int steps, string matrix
     string foldername;
 
 
-    //segmentation fault for i = 0
+    //start at 1, 0 does not make sense
     for (int i = 1; i < max_MPC_horizon; ++i) {
 	MATRIXOP data(i, matrix_A, matrix_B_y, matrix_B_w, vec_b_u, vec_b_y_out, eps, y_ref, u_ref, convection, closed_values, open_values);
 
@@ -289,7 +289,6 @@ void write_parameters(int MPC_horizon, int steps, string matrix_A, string matrix
 	string function = "0.3 * sin(0.1 * i)";
 
 	out << cost_vs_horizon << "\t cost_vs_horizon \n";
-
 	out << alpha << "\t alpha \n";
 	out << beta << "\t beta \n";
 	out << gamma << "\t gamma \n";
