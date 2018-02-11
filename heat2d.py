@@ -30,18 +30,8 @@ left = CompiledSubDomain("near(x[0], 0.)")
 top = CompiledSubDomain("near(x[1], 1.)")
 bot = CompiledSubDomain("near(x[1], 0.)")
 
-
-
-class controldomain(SubDomain):
-    def inside(self, x, on_boundary):
-        return near(x[0], 1.) and (x[1] >= 0.4 - tol) and (x[1] <= 0.6 + tol)
-
-class restdomain(SubDomain):
-    def inside(self, x, on_boundary):
-        return near(x[0], 1.) and ((x[1] < 0.4) or (x[1] > 0.6))
-
-control = controldomain()
-right = restdomain()
+control = CompiledSubDomain("near(x[0], 1.) and (x[1] >= 0.4) and (x[1] <= 0.6)")
+right = CompiledSubDomain("near(x[0], 1.) and ((x[1] < 0.4) or (x[1] > 0.6))")
 
 # Label boundaries, required for the objective
 boundary_parts = MeshFunction("size_t", mesh, mesh.topology().dim() - 1)
