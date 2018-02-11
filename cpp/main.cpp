@@ -17,13 +17,14 @@
 using namespace Ipopt;
 
 int optimize(int steps, MATRIXOP & data, int outputlevel);
-void closed_cost_vs_horizon_length(int max_MPC_horizon, int steps, string matrix_A, string matrix_B_y, string matrix_B_w, string vec_b_u, string vec_b_y_out,
-	double eps, double y_ref, double u_ref, bool convection, int outputlevel);
+void closed_cost_vs_horizon_length(int max_MPC_horizon, int steps, string matrix_A, string matrix_B_y,
+	string matrix_B_w, string vec_b_u, string vec_b_y_out, string dof_x, string dof_y, double eps, double y_ref, double u_ref, bool dim2, bool convection, int outputlevel);
 //void solver_test(MATRIXOP &data, int steps);
-void write_parameters(int MPC_horizon, int steps, string matrix_A, string matrix_B_y, string matrix_B_w, string vec_b_u, string vec_b_y_out,
-	double eps, double y_ref, double u_ref, bool convection, bool closed_values, bool open_values, bool cost_vs_horizon, string foldername);
+void write_parameters(int MPC_horizon, int steps, string matrix_A, string matrix_B_y, string matrix_B_w, string vec_b_u, string vec_b_y_out, string dof_x, string dof_y,
+	double eps, double y_ref, double u_ref, bool dim2, bool convection, bool closed_values, bool open_values, bool cost_vs_horizon, string foldername);
 
 int main(int argc, char** argv) {
+    bool dim2 = false;
     bool convection = false;
     bool closed_values = false;
     bool open_values = false;
@@ -37,6 +38,9 @@ int main(int argc, char** argv) {
     string matrix_B_w = "../B_w.mtx";
     string vec_b_u = "../b_u.txt";
     string vec_b_y_out = "../b_y_out.txt";
+    string dof_x = "../dof_x.txt";
+    string dof_y = "../dof_y.txt";
+
 
     int steps = 100;
     int MPC_horizon = 20;
@@ -47,6 +51,7 @@ int main(int argc, char** argv) {
     args::HelpFlag help(parser, "help", "Display this help menu",{'h', "help"});
     args::CompletionFlag completion(parser,{"complete"});
 
+    args::Flag dim2_(parser, "2 dimensional", "turn dimension 2 on",{'d', "dim2"});
     args::Flag convection_(parser, "convection", "turn convection on",{'c', "convection"});
     args::Flag closed_values_(parser, "closed values", "save states of the closed loop",{"cv", "closedvalues"});
     args::Flag open_values_(parser, "open values", "save states of all open loop",{"ov", "openvalues"});
@@ -63,6 +68,8 @@ int main(int argc, char** argv) {
     args::ValueFlag<string> matrix_B_w_(parser, "Matrix B_w", "matrix B_w from PDE",{"matB_w"});
     args::ValueFlag<string> vec_b_u_(parser, "vec_b_u", "vector b_u from PDE",{"b_u"});
     args::ValueFlag<string> vec_b_y_out_(parser, "vec_b_y_out", "vector b_y_out from PDE",{"b_y_out"});
+    args::ValueFlag<string> dof_x_(parser, "dof_x", "vector dof_x from PDE",{"dof_x"});
+    args::ValueFlag<string> dof_y_(parser, "dof_y", "vector dof_y from PDE",{"dof_y"});
 
     try {
 	parser.ParseCLI(argc, argv);
@@ -81,7 +88,7 @@ int main(int argc, char** argv) {
 	return 1;
     }
 
-
+    dim2 = dim2_;
     convection = convection_;
     closed_values = closed_values_;
     open_values = open_values_;
@@ -121,6 +128,12 @@ int main(int argc, char** argv) {
     if (vec_b_y_out_) {
 	vec_b_y_out = args::get(vec_b_y_out_);
     }
+    if (dof_x_) {
+	dof_x = args::get(dof_x_);
+    }
+    if (dof_y_) {
+	dof_y = args::get(dof_y_);
+    }
 
 
 
@@ -128,10 +141,10 @@ int main(int argc, char** argv) {
 
     //start program
     if (cost_vs_horizon) {
-	closed_cost_vs_horizon_length(MPC_horizon, steps, matrix_A, matrix_B_y, matrix_B_w, vec_b_u, vec_b_y_out, eps, y_ref, u_ref, convection, outputlevel);
+	closed_cost_vs_horizon_length(MPC_horizon, steps, matrix_A, matrix_B_y, matrix_B_w, vec_b_u, vec_b_y_out, dof_x, dof_y, eps, y_ref, u_ref, dim2, convection, outputlevel);
     }
     else {
-	MATRIXOP data(MPC_horizon, matrix_A, matrix_B_y, matrix_B_w, vec_b_u, vec_b_y_out, eps, y_ref, u_ref, convection, closed_values, open_values);
+	MATRIXOP data(MPC_horizon, matrix_A, matrix_B_y, matrix_B_w, vec_b_u, vec_b_y_out, dof_x, dof_y, eps, y_ref, u_ref, dim2, convection, closed_values, open_values);
 	int status = optimize(steps, data, outputlevel);
 
 	if (status == 0) {
@@ -143,7 +156,7 @@ int main(int argc, char** argv) {
 
 
 	if (closed_values || open_values) {
-	    write_parameters(MPC_horizon, steps, matrix_A, matrix_B_y, matrix_B_w, vec_b_u, vec_b_y_out, eps, y_ref, u_ref, convection, closed_values, open_values, cost_vs_horizon, data.foldername);
+	    write_parameters(MPC_horizon, steps, matrix_A, matrix_B_y, matrix_B_w, vec_b_u, vec_b_y_out, dof_x, dof_y, eps, y_ref, u_ref, dim2, convection, closed_values, open_values, cost_vs_horizon, data.foldername);
 	}
     }
 
@@ -173,7 +186,7 @@ int optimize(int steps, MATRIXOP & data, int outputlevel) {
 	if (data.convection) {
 	    app->Options()->SetStringValue("jac_c_constant", "no");
 	    app->Options()->SetStringValue("jac_d_constant", "no");
-	    
+
 	    //approximation of the hessian of the lagranage function by only using the hessian of the objective function
 	    //error of ~10e-3
 	    app->Options()->SetStringValue("hessian_constant", "yes");
@@ -206,7 +219,7 @@ int optimize(int steps, MATRIXOP & data, int outputlevel) {
 }
 
 void closed_cost_vs_horizon_length(int max_MPC_horizon, int steps, string matrix_A, string matrix_B_y,
-	string matrix_B_w, string vec_b_u, string vec_b_y_out, double eps, double y_ref, double u_ref, bool convection, int outputlevel) {
+	string matrix_B_w, string vec_b_u, string vec_b_y_out, string dof_x, string dof_y, double eps, double y_ref, double u_ref, bool dim2, bool convection, int outputlevel) {
     int status;
     bool closed_values = false;
     bool open_values = false;
@@ -216,7 +229,7 @@ void closed_cost_vs_horizon_length(int max_MPC_horizon, int steps, string matrix
 
     //start at 1, 0 does not make sense
     for (int i = 1; i < max_MPC_horizon; ++i) {
-	MATRIXOP data(i, matrix_A, matrix_B_y, matrix_B_w, vec_b_u, vec_b_y_out, eps, y_ref, u_ref, convection, closed_values, open_values);
+	MATRIXOP data(i, matrix_A, matrix_B_y, matrix_B_w, vec_b_u, vec_b_y_out, dof_x, dof_y, eps, y_ref, u_ref, dim2, convection, closed_values, open_values);
 
 	if (i == 1) {
 	    data.create_folder();
@@ -246,13 +259,13 @@ void closed_cost_vs_horizon_length(int max_MPC_horizon, int steps, string matrix
 	cout << "couldnt open ofstream" << endl;
     }
 
-    write_parameters(max_MPC_horizon, steps, matrix_A, matrix_B_y, matrix_B_w, vec_b_u, vec_b_y_out, eps, y_ref, u_ref, convection, closed_values, open_values, true, foldername);
+    write_parameters(max_MPC_horizon, steps, matrix_A, matrix_B_y, matrix_B_w, vec_b_u, vec_b_y_out, dof_x, dof_y, eps, y_ref, u_ref, dim2, convection, closed_values, open_values, true, foldername);
 
     out.close();
 }
 
-void write_parameters(int MPC_horizon, int steps, string matrix_A, string matrix_B_y, string matrix_B_w, string vec_b_u, string vec_b_y_out,
-	double eps, double y_ref, double u_ref, bool convection, bool closed_values, bool open_values, bool cost_vs_horizon, string foldername) {
+void write_parameters(int MPC_horizon, int steps, string matrix_A, string matrix_B_y, string matrix_B_w, string vec_b_u, string vec_b_y_out, string dof_x, string dof_y,
+	double eps, double y_ref, double u_ref, bool dim2, bool convection, bool closed_values, bool open_values, bool cost_vs_horizon, string foldername) {
     double alpha = 0, beta = 0, gamma = 0;
     string trash;
     ifstream pythonparam("../parameters.txt");
@@ -286,6 +299,7 @@ void write_parameters(int MPC_horizon, int steps, string matrix_A, string matrix
 	out << u_lower << "\t u_lower \n";
 	out << y_upper << "\t y_upper \n";
 	out << y_lower << "\t y_lower \n";
+	out << dim2 << "\t dim2 \n";	
 	out << convection << "\t convection \n";
 	out << closed_values << "\t closed_values \n";
 	out << open_values << "\t open_values \n";
@@ -295,6 +309,8 @@ void write_parameters(int MPC_horizon, int steps, string matrix_A, string matrix
 	out << matrix_B_w << "\t matrix_B_w \n";
 	out << vec_b_u << "\t vec_b_u \n";
 	out << vec_b_y_out << "\t vec_b_y_out \n";
+	out << dof_x << "\t dof_x \n";
+	out << dof_y << "\t dof_y \n";
 
 	out.close();
     }

@@ -14,14 +14,21 @@ using namespace std;
 MATRIXOP::MATRIXOP() {
 }
 
-MATRIXOP::MATRIXOP(int N_, string file_A, string file_B_y, string file_B_w, string file_b_u, string file_b_y,
-	double eps_, double y_ref_, double u_ref_, bool convection_, bool closed_values_, bool open_values_) {
+MATRIXOP::MATRIXOP(int N_, string file_A, string file_B_y, string file_B_w, string file_b_u, string file_b_y, string file_dof_x, string file_dof_y, 
+	double eps_, double y_ref_, double u_ref_, bool dim2_, bool convection_, bool closed_values_, bool open_values_) {
+    
+    dim2 = dim2_;
     convection = convection_;
 
     read_matrix(file_A, A_rows, A_cols, A_vals);
     read_matrix(file_B_y, B_y_rows, B_y_cols, B_y_vals);
     read_vector(file_b_u, b_u);
     read_vector(file_b_y, b_y);
+
+    if (dim2) {
+	read_vector(file_dof_x, dof_x);
+	read_vector(file_dof_y, dof_y);
+    }
     if (convection) {
 	read_matrix(file_B_w, B_w_rows, B_w_cols, B_w_vals);
     }

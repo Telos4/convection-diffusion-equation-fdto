@@ -25,8 +25,8 @@ class MATRIXOP {
 public:
 
     MATRIXOP();
-    MATRIXOP(int N_, string file_A, string file_B_y, string file_B_w, string file_b_u, string file_b_y,
-            double eps_, double y_ref_, double u_ref_, bool convection, bool closed_values, bool open_values);
+    MATRIXOP(int N_, string file_A, string file_B_y, string file_B_w, string file_b_u, string file_b_y, string file_dof_x, string file_dof_y, 
+            double eps_, double y_ref_, double u_ref_, bool dim2, bool convection, bool closed_values, bool open_values);
 
 
     /** Default destructor */
@@ -56,11 +56,11 @@ public:
     
     
     valarray<int> A_rows, A_cols, B_y_rows, B_y_cols, A_eq_rows, A_eq_cols, B_w_rows, B_w_cols;
-    valarray<double> A_vals, B_y_vals, A_eq_vals, B_w_vals, b_u, b_y, y_old, u_old, w_old;
+    valarray<double> A_vals, B_y_vals, A_eq_vals, B_w_vals, b_u, b_y, y_old, u_old, w_old, dof_x, dof_y;
     int n_y, n_u, n_w, n_z, N, iter;
     double eps, y_ref, u_ref, closed_loop_cost;
     
-    bool convection, closed_values, open_values;
+    bool dim2, convection, closed_values, open_values;
     string foldername;
 private:
 

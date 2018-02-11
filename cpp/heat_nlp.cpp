@@ -61,67 +61,105 @@ bool HEAT_NLP::get_bounds_info(Index n, Number* x_l, Number* x_u,
     double y_upper = 0.15;
     double y_lower = -0.15;
     double inf = 1e19;
-    Index left = floor(data.n_y / 4);
-    //Index right = (int) (data.n_y * 3 / 4);
 
-
-    //initial value
-    for (Index i = 0; i < data.n_y; ++i) {
-	x_u[i] = data.y_old[data.n_y + i];
-	x_l[i] = data.y_old[data.n_y + i];
-    }
-
-
-    for (Index k = 1; k < data.N + 1; ++k) {
-	//bound for y left, right
-	for (Index i = 0; i < left; ++i) {
-	    x_u[k * data.n_y + i] = x_u[(k + 1) * data.n_y - i - 1] = inf;
-	    x_l[k * data.n_y + i] = x_l[(k + 1) * data.n_y - i - 1] = -inf;
+    if (data.dim2) {
+	//initial value
+	for (int i = 0; i < data.n_y; ++i) {
+	    x_u[i] = data.y_old[data.n_y + i];
+	    x_l[i] = data.y_old[data.n_y + i];
 	}
 
-	//bound for y center
-	for (Index i = left; i < data.n_y - left + 1; ++i) {
-	    x_u[k * data.n_y + i] = y_upper;
-	    x_l[k * data.n_y + i] = y_lower;
-	}
-	/*
-		//bound for y right
-		for (Index i = right; i < data.n_y; ++i) {
+	double left = 0.3;
+	double right = 0.7;
+	double top = 0.7;
+	double bot = 0.3;
+
+	//state constraints
+	for (int k = 1; k < data.N + 1; ++k) {
+	    for (int i = 0; i < data.n_y; ++i) {
+		double x = data.dof_x[i];
+		double y = data.dof_y[i];
+		if (x >= left && x <= right && y >= bot && y <= top) {
+		    x_u[k * data.n_y + i] = y_upper;
+		    x_l[k * data.n_y + i] = y_lower;
+		}
+		else {
 		    x_u[k * data.n_y + i] = inf;
 		    x_l[k * data.n_y + i] = -inf;
 		}
+	    }
+	}
+
+	//bound for u
+	for (int i = (data.N + 1) * data.n_y; i < (data.N + 1) * data.n_y + data.N * data.n_u; ++i) {
+	    x_u[i] = u_upper;
+	    x_l[i] = u_lower;
+	}
+
+
+	/*
+	//equality constraints for g. What should these look like?
+	for (int i = 0; i < data.N; ++i) {
+	    for (int k = 0; k < data.n_y; ++k) {
+		g_u[data.n_y * i + k] = g_l[data.n_y * i + k] = data.b_y[k] * eval_y_out(data.iter + i);
+	    }
+	}
 	 */
     }
 
-
-    if (data.convection) {
-
-	//bound for u
-	for (Index i = (data.N + 1) * data.n_y; i < (data.N + 1) * data.n_y + data.N * data.n_u; ++i) {
-	    x_u[i] = u_upper;
-	    x_l[i] = u_lower;
-	}
-	//bound for w
-	for (Index i = (data.N + 1) * data.n_y + data.N * data.n_u; i < data.n_z; ++i) {
-	    x_u[i] = inf;
-	    x_l[i] = -inf;
-	}
-    }
-
+	//1 dimensional
     else {
+
+
+	//initial value
+	for (int i = 0; i < data.n_y; ++i) {
+	    x_u[i] = data.y_old[data.n_y + i];
+	    x_l[i] = data.y_old[data.n_y + i];
+	}
+
+	int left = floor(data.n_y / 4);
+	//int right = (int) (data.n_y * 3 / 4);
+
+	for (int k = 1; k < data.N + 1; ++k) {
+	    //bound for y left, right
+	    for (int i = 0; i < left; ++i) {
+		x_u[k * data.n_y + i] = x_u[(k + 1) * data.n_y - i - 1] = inf;
+		x_l[k * data.n_y + i] = x_l[(k + 1) * data.n_y - i - 1] = -inf;
+	    }
+
+	    //bound for y center
+	    for (int i = left; i < data.n_y - left + 1; ++i) {
+		x_u[k * data.n_y + i] = y_upper;
+		x_l[k * data.n_y + i] = y_lower;
+	    }
+	    /*
+		    //bound for y right
+		    for (Index i = right; i < data.n_y; ++i) {
+			x_u[k * data.n_y + i] = inf;
+			x_l[k * data.n_y + i] = -inf;
+		    }
+	     */
+	}
+
 	//bound for u
-	for (Index i = (data.N + 1) * data.n_y; i < data.n_z; ++i) {
+	for (int i = (data.N + 1) * data.n_y; i < (data.N + 1) * data.n_y + data.N * data.n_u; ++i) {
 	    x_u[i] = u_upper;
 	    x_l[i] = u_lower;
 	}
-    }
 
+	if (data.convection) {
+	    //bound for w
+	    for (int i = (data.N + 1) * data.n_y + data.N * data.n_u; i < data.n_z; ++i) {
+		x_u[i] = inf;
+		x_l[i] = -inf;
+	    }
+	}
 
-
-    //equality constraints for g
-    for (Index i = 0; i < data.N; ++i) {
-	for (Index k = 0; k < data.n_y; ++k) {
-	    g_u[data.n_y * i + k] = g_l[data.n_y * i + k] = data.b_y[k] * eval_y_out(data.iter + i);
+	//equality constraints for g
+	for (int i = 0; i < data.N; ++i) {
+	    for (int k = 0; k < data.n_y; ++k) {
+		g_u[data.n_y * i + k] = g_l[data.n_y * i + k] = data.b_y[k] * eval_y_out(data.iter + i);
+	    }
 	}
     }
     return true;
