@@ -147,9 +147,6 @@ int main(int argc, char** argv) {
 	}
     }
 
-
-
-
     return 0;
 }
 
@@ -176,8 +173,11 @@ int optimize(int steps, MATRIXOP & data, int outputlevel) {
 	if (data.convection) {
 	    app->Options()->SetStringValue("jac_c_constant", "no");
 	    app->Options()->SetStringValue("jac_d_constant", "no");
-	    app->Options()->SetStringValue("hessian_constant", "no");
-	    app->Options()->SetStringValue("hessian_approximation", "limited-memory");
+	    
+	    //approximation of the hessian of the lagranage function by only using the hessian of the objective function
+	    //error of ~10e-3
+	    app->Options()->SetStringValue("hessian_constant", "yes");
+	    //app->Options()->SetStringValue("hessian_approximation", "limited-memory");
 	}
 
 	// Initialize the IpoptApplication and process the options
@@ -219,6 +219,7 @@ void closed_cost_vs_horizon_length(int max_MPC_horizon, int steps, string matrix
 	MATRIXOP data(i, matrix_A, matrix_B_y, matrix_B_w, vec_b_u, vec_b_y_out, eps, y_ref, u_ref, convection, closed_values, open_values);
 
 	if (i == 1) {
+	    data.create_folder();
 	    foldername = data.foldername;
 	}
 
@@ -232,22 +233,6 @@ void closed_cost_vs_horizon_length(int max_MPC_horizon, int steps, string matrix
 	    costs[i] = 0;
 	    std::cout << "Step: " << i << " *** failure!" << std::endl;
 	}
-    }
-
-    //create directory, dont like this here
-    //create results folder first, cant create subdirectories directly?
-    try {
-	boost::filesystem::create_directory("../results/");
-    }
-    catch (boost::filesystem::filesystem_error &e) {
-	std::cerr << e.what() << '\n';
-    }
-    try {
-	cout << foldername << endl;
-	boost::filesystem::create_directory(foldername);
-    }
-    catch (boost::filesystem::filesystem_error &e) {
-	std::cerr << e.what() << '\n';
     }
 
     ofstream out;

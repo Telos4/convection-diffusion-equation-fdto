@@ -25,7 +25,6 @@ HEAT_NLP::~HEAT_NLP() {
 
 HEAT_NLP::HEAT_NLP(MATRIXOP &data_)
 : data(data_) {
-
 }
 
 bool HEAT_NLP::get_nlp_info(Index& n, Index& m, Index& nnz_jac_g,
@@ -145,28 +144,27 @@ bool HEAT_NLP::get_starting_point(Index n, bool init_x, Number* x,
 
 
     //use the shifted solution from the previous solution, 
-    //for the uninitialized values use the last known value y_old[data.N*data.n_y - 1]
+    //for the uninitialized values use the last step again
     for (int i = 0; i < data.N * data.n_y; ++i) {
 	x[i] = data.y_old[data.n_y + i];
     }
     for (int i = data.N * data.n_y; i < (data.N + 1) * data.n_y; ++i) {
-	x[i] = data.y_old[data.N * data.n_y - 1];
+	x[i] = data.y_old[i];
     }
 
-    //wrong for 2 dimensions
-    for (int i = 0; i < data.N * data.n_u - 1; ++i) {
-	x[(data.N + 1) * data.n_y + i] = data.u_old[i + 1];
+    for (int i = 0; i < (data.N - 1) * data.n_u; ++i) {
+	x[(data.N + 1) * data.n_y + i] = data.u_old[i + data.n_u];
     }
-    for (int i = data.N * data.n_u - 1; i < data.N * data.n_u; ++i) {
-	x[(data.N + 1) * data.n_y + i] = data.u_old[data.N * data.n_u - 1];
+    for (int i = (data.N - 1) * data.n_u; i < data.N * data.n_u; ++i) {
+	x[(data.N + 1) * data.n_y + i] = data.u_old[i];
     }
 
     if (data.convection) {
-	for (int i = 0; i < data.N * data.n_w - 1; ++i) {
-	    x[(data.N + 1) * data.n_y + data.N * data.n_u + i] = data.w_old[i + 1];
+	for (int i = 0; i < (data.N - data.n_w) * data.n_w; ++i) {
+	    x[(data.N + 1) * data.n_y + data.N * data.n_u + i] = data.w_old[i + data.n_w];
 	}
-	for (int i = data.N * data.n_w - 1; i < data.N * data.n_u; ++i) {
-	    x[(data.N + 1) * data.n_y + data.N * data.n_u + i] = data.w_old[data.N * data.n_w - 1];
+	for (int i = (data.N - data.n_w) * data.n_w; i < data.N * data.n_w; ++i) {
+	    x[(data.N + 1) * data.n_y + data.N * data.n_u + i] = data.w_old[i];
 	}
     }
 
@@ -237,6 +235,7 @@ bool HEAT_NLP::eval_g(Index n, const Number* x, bool new_x,
 //works only if A and B_w have the same pattern.
 //enough for testing for now
 //implement general case later
+//as long as A and B_w should always have the same pattern, because 
 //need to change nnz_jacobian in get_nlp_info as well
 
 bool HEAT_NLP::eval_jac_g(Index n, const Number* x, bool new_x,
@@ -347,8 +346,7 @@ bool HEAT_NLP::eval_jac_g(Index n, const Number* x, bool new_x,
     return true;
 }
 
-//ignore the hessian of the lagrange function for now 
-//when convection is off this is zero 
+//approximate hessian of the lagrange function by hessian of the objective function
 
 bool HEAT_NLP::eval_h(Index n, const Number* x, bool new_x,
 	Number obj_factor, Index m, const Number* lambda,
@@ -356,10 +354,13 @@ bool HEAT_NLP::eval_h(Index n, const Number* x, bool new_x,
 	Index* iRow, Index* jCol, Number * values) {
     assert(data.n_z == n);
 
+
+    //test if approximation of hessian using only the hessian of the objective function is good enough
+    /*
     if (data.convection) {
 	return false;
     }
-
+     */
     if (values == NULL) {
 	for (int i = 0; i < data.n_z; ++i) {
 	    iRow[i] = i;
@@ -423,8 +424,8 @@ void HEAT_NLP::finalize_solution(SolverReturn status,
 	data.closed_loop_cost += 0.5 * data.vec_W_vec(w_new);
     }
 
-    
-    
+
+
     //closed loop values
     if (data.closed_values) {
 	ofstream ofs_y(data.foldername + "closedloop_y.txt", ofstream::app);

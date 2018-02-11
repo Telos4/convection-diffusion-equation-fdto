@@ -73,32 +73,11 @@ MATRIXOP::MATRIXOP(int N_, string file_A, string file_B_y, string file_B_w, stri
 	    w_old[i] = 0.0;
 	}
     }
-    time_t t = time(0); // get time now
-    struct tm * now = localtime(& t);
-
-    foldername = "../results/" + to_string(now->tm_year + 1900) + "-" + to_string(now->tm_mon + 1) + "-" + to_string(now->tm_mday)
-	    + "_" + to_string(now->tm_hour) + "-" + to_string(now->tm_min) + "-" + to_string(now->tm_sec) + "/";
 
     if (closed_values || open_values) {
-	//cout << boost::filesystem::current_path().string() << endl;
-	boost::filesystem::path p(foldername);
-
-	//create results folder first, cant create subdirectories directly?
-	try {
-	    boost::filesystem::create_directory("../results");
-	}
-	catch (boost::filesystem::filesystem_error &e) {
-	    std::cerr << e.what() << '\n';
-	}
-	try {
-	    boost::filesystem::create_directory(p);
-	}
-	catch (boost::filesystem::filesystem_error &e) {
-	    std::cerr << e.what() << '\n';
-	}
+	create_folder();
     }
 }
-
 
 //destructor
 
@@ -164,6 +143,33 @@ void MATRIXOP::print_vector(valarray<double> &vals) const {
 	cout << vals[i] << endl;
     }
 }
+
+void MATRIXOP::create_folder() {
+
+    time_t t = time(0); // get time now
+    struct tm * now = localtime(& t);
+
+    foldername = "../results/" + to_string(now->tm_year + 1900) + "-" + to_string(now->tm_mon + 1) + "-" + to_string(now->tm_mday)
+	    + "_" + to_string(now->tm_hour) + "-" + to_string(now->tm_min) + "-" + to_string(now->tm_sec) + "/";
+
+    //cout << boost::filesystem::current_path().string() << endl;
+    boost::filesystem::path p(foldername);
+
+    //create results folder first, cant create subdirectories directly?
+    try {
+	boost::filesystem::create_directory("../results");
+    }
+    catch (boost::filesystem::filesystem_error &e) {
+	std::cerr << e.what() << '\n';
+    }
+    try {
+	boost::filesystem::create_directory(p);
+    }
+    catch (boost::filesystem::filesystem_error &e) {
+	std::cerr << e.what() << '\n';
+    }
+}
+
 
 //todo insert matrices Q, R, ...  y_ref, u_ref as vector?
 

@@ -36,6 +36,7 @@ public:
     void read_vector(string filename, valarray<double> &vals);
     void print_matrix(valarray<int> &rows, valarray<int> &cols, valarray<double> &vals) const;
     void print_vector(valarray<double> &vals) const;
+    void create_folder();
 
     double eval_f(valarray<double> &x);
     double vec_Q_vec(valarray<double> y, double y_ref);
