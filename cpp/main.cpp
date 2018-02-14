@@ -288,7 +288,7 @@ void write_parameters(int MPC_horizon, int steps, string matrix_A, string matrix
 	string function = "0.3 * sin(0.1 * i)";
 
 	out << cost_vs_horizon << "\t cost_vs_horizon \n";
-	out << n << "\t discretization_parameter";
+	out << n << "\t discretization_parameter \n";
 	out << alpha << "\t alpha \n";
 	out << beta << "\t beta \n";
 	out << gamma << "\t gamma \n";
