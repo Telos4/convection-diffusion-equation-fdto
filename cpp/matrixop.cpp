@@ -14,9 +14,9 @@ using namespace std;
 MATRIXOP::MATRIXOP() {
 }
 
-MATRIXOP::MATRIXOP(int N_, string file_A, string file_B_y, string file_B_w, string file_b_u, string file_b_y, string file_dof_x, string file_dof_y, 
+MATRIXOP::MATRIXOP(int N_, string file_A, string file_B_y, string file_B_w, string file_b_u, string file_b_y, string file_dof_x, string file_dof_y,
 	double eps_, double y_ref_, double u_ref_, bool dim2_, bool convection_, bool closed_values_, bool open_values_) {
-    
+
     dim2 = dim2_;
     convection = convection_;
 
@@ -58,11 +58,18 @@ MATRIXOP::MATRIXOP(int N_, string file_A, string file_B_y, string file_B_w, stri
     iter = 0;
     closed_loop_cost = 0;
 
+    discretization_n = (int) sqrt(n_y) - 1;
+
     closed_values = closed_values_;
     open_values = open_values_;
 
     //initialize A_eq
     A_eq();
+
+    if (dim2) {
+	initialize_order();
+    }
+
 
     y_old.resize((N + 1) * n_y);
     u_old.resize(N * n_u);
@@ -80,6 +87,8 @@ MATRIXOP::MATRIXOP(int N_, string file_A, string file_B_y, string file_B_w, stri
 	    w_old[i] = 0.0;
 	}
     }
+
+
 
     if (closed_values || open_values) {
 	create_folder();
@@ -318,6 +327,14 @@ void MATRIXOP::A_eq() {
     cout << endl;
 }
 
+void MATRIXOP::initialize_order() {
+    //assumption: we have a n x n grid
+    order.resize(n_y);
+    for (int i = 0; i < n_y; ++i) {
+	order[i] = (int) discretization_n * (dof_x[i] + discretization_n * dof_y[i]);
+    }
+}
+
 valarray<double> MATRIXOP::matrix_vector_mult(valarray<int> &rows,
 	valarray<int> &cols, valarray<double> &vals, valarray<double> &vec) {
     long size_matrix = rows.size();
@@ -333,3 +350,4 @@ valarray<double> MATRIXOP::matrix_vector_mult(valarray<int> &rows,
     }
     return re;
 }
+

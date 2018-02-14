@@ -173,7 +173,7 @@ int optimize(int steps, MATRIXOP & data, int outputlevel) {
 	app->RethrowNonIpoptException(true);
 
 	// Change some options
-	//app->Options()->SetStringValue("derivative_test", "first-order");
+	//app->Options()->SetStringValue("derivative_test", "second-order");
 	//app->Options()->SetStringValue("output_file", "ipopt.out");
 	app->Options()->SetIntegerValue("print_level", outputlevel);
 
@@ -189,8 +189,8 @@ int optimize(int steps, MATRIXOP & data, int outputlevel) {
 
 	    //approximation of the hessian of the lagranage function by only using the hessian of the objective function
 	    //error of ~10e-3
-	    app->Options()->SetStringValue("hessian_constant", "yes");
-	    //app->Options()->SetStringValue("hessian_approximation", "limited-memory");
+	    app->Options()->SetStringValue("hessian_constant", "no");
+	    app->Options()->SetStringValue("hessian_approximation", "limited-memory");
 	}
 
 	// Initialize the IpoptApplication and process the options
@@ -267,10 +267,11 @@ void closed_cost_vs_horizon_length(int max_MPC_horizon, int steps, string matrix
 void write_parameters(int MPC_horizon, int steps, string matrix_A, string matrix_B_y, string matrix_B_w, string vec_b_u, string vec_b_y_out, string dof_x, string dof_y,
 	double eps, double y_ref, double u_ref, bool dim2, bool convection, bool closed_values, bool open_values, bool cost_vs_horizon, string foldername) {
     double alpha = 0, beta = 0, gamma = 0;
+    int n = 0;
     string trash;
     ifstream pythonparam("../parameters.txt");
     if (pythonparam.is_open()) {
-	pythonparam >> alpha >> trash >> beta >> trash >> gamma;
+	pythonparam >> n >> trash >> alpha >> trash >> beta >> trash >> gamma;
 	pythonparam.close();
     }
     else {
@@ -287,6 +288,7 @@ void write_parameters(int MPC_horizon, int steps, string matrix_A, string matrix
 	string function = "0.3 * sin(0.1 * i)";
 
 	out << cost_vs_horizon << "\t cost_vs_horizon \n";
+	out << n << "\t discretization_parameter";
 	out << alpha << "\t alpha \n";
 	out << beta << "\t beta \n";
 	out << gamma << "\t gamma \n";

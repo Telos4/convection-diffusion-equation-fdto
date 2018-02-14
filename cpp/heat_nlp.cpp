@@ -62,19 +62,22 @@ bool HEAT_NLP::get_bounds_info(Index n, Number* x_l, Number* x_u,
     double y_lower = -0.15;
     double inf = 1e19;
 
+
+    //initial value
+    for (int i = 0; i < data.n_y; ++i) {
+	x_u[i] = data.y_old[data.n_y + i];
+	x_l[i] = data.y_old[data.n_y + i];
+    }
+
+    //state constraints in 2d
     if (data.dim2) {
-	//initial value
-	for (int i = 0; i < data.n_y; ++i) {
-	    x_u[i] = data.y_old[data.n_y + i];
-	    x_l[i] = data.y_old[data.n_y + i];
-	}
 
 	double left = 0.3;
 	double right = 0.7;
 	double top = 0.7;
 	double bot = 0.3;
 
-	//state constraints
+
 	for (int k = 1; k < data.N + 1; ++k) {
 	    for (int i = 0; i < data.n_y; ++i) {
 		double x = data.dof_x[i];
@@ -89,33 +92,10 @@ bool HEAT_NLP::get_bounds_info(Index n, Number* x_l, Number* x_u,
 		}
 	    }
 	}
-
-	//bound for u
-	for (int i = (data.N + 1) * data.n_y; i < (data.N + 1) * data.n_y + data.N * data.n_u; ++i) {
-	    x_u[i] = u_upper;
-	    x_l[i] = u_lower;
-	}
-
-
-	/*
-	//equality constraints for g. What should these look like?
-	for (int i = 0; i < data.N; ++i) {
-	    for (int k = 0; k < data.n_y; ++k) {
-		g_u[data.n_y * i + k] = g_l[data.n_y * i + k] = data.b_y[k] * eval_y_out(data.iter + i);
-	    }
-	}
-	 */
     }
 
-	//1 dimensional
+	//state constraints in 1d
     else {
-
-
-	//initial value
-	for (int i = 0; i < data.n_y; ++i) {
-	    x_u[i] = data.y_old[data.n_y + i];
-	    x_l[i] = data.y_old[data.n_y + i];
-	}
 
 	int left = floor(data.n_y / 4);
 	//int right = (int) (data.n_y * 3 / 4);
@@ -140,28 +120,29 @@ bool HEAT_NLP::get_bounds_info(Index n, Number* x_l, Number* x_u,
 		    }
 	     */
 	}
+    }
 
-	//bound for u
-	for (int i = (data.N + 1) * data.n_y; i < (data.N + 1) * data.n_y + data.N * data.n_u; ++i) {
-	    x_u[i] = u_upper;
-	    x_l[i] = u_lower;
-	}
+    //bound for u
+    for (int i = (data.N + 1) * data.n_y; i < (data.N + 1) * data.n_y + data.N * data.n_u; ++i) {
+	x_u[i] = u_upper;
+	x_l[i] = u_lower;
+    }
 
-	if (data.convection) {
-	    //bound for w
-	    for (int i = (data.N + 1) * data.n_y + data.N * data.n_u; i < data.n_z; ++i) {
-		x_u[i] = inf;
-		x_l[i] = -inf;
-	    }
-	}
-
-	//equality constraints for g
-	for (int i = 0; i < data.N; ++i) {
-	    for (int k = 0; k < data.n_y; ++k) {
-		g_u[data.n_y * i + k] = g_l[data.n_y * i + k] = data.b_y[k] * eval_y_out(data.iter + i);
-	    }
+    if (data.convection) {
+	//bound for w
+	for (int i = (data.N + 1) * data.n_y + data.N * data.n_u; i < data.n_z; ++i) {
+	    x_u[i] = inf;
+	    x_l[i] = -inf;
 	}
     }
+
+    //equality constraints for g
+    for (int k = 0; k < data.N; ++k) {
+	for (int i = 0; i < data.n_y; ++i) {
+	    g_u[data.n_y * k + i] = g_l[data.n_y * k + i] = data.b_y[i] * eval_y_out(data.iter + k);
+	}
+    }
+
     return true;
 }
 
@@ -470,10 +451,26 @@ void HEAT_NLP::finalize_solution(SolverReturn status,
 	ofstream ofs_u(data.foldername + "closedloop_u.txt", ofstream::app);
 	ofstream ofs_cost(data.foldername + "closedloop_cost.txt", ofstream::app);
 
-	for (int i = 0; i < data.n_y; ++i) {
-	    ofs_y << x[data.n_y + i] << " ";
+	//order data, then write
+	if (data.dim2) {
+	    valarray<double> temp(data.n_y);
+
+	    for (int i = 0; i < data.n_y; ++i) {
+		temp[data.order[i]] = x[data.n_y + i];
+	    }
+	    for (int i = 0; i < data.n_y; ++i) {
+		ofs_y << temp[i] << " ";
+	    }
+	    ofs_y << endl;
 	}
-	ofs_y << endl;
+
+	else {
+	    for (int i = 0; i < data.n_y; ++i) {
+		ofs_y << x[data.n_y + i] << " ";
+	    }
+	    ofs_y << endl;
+	}
+
 
 	for (int i = 0; i < data.n_u; ++i) {
 	    ofs_u << x[(data.N + 1) * data.n_y + i] << " ";

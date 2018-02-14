@@ -10,8 +10,9 @@ from collections import OrderedDict
 set_log_level(WARNING)
 
 # Prepare a mesh
+n = 10
 #mesh = UnitIntervalMesh(100)
-mesh = UnitSquareMesh(10,10)
+mesh = UnitSquareMesh(n,n)
 
 # Choose a time step size
 k = Constant(1e-2)
@@ -26,45 +27,35 @@ gamma = Constant(1.0e3)
 
 # Compile sub domains for boundaries
 tol = 1e-14
+right = CompiledSubDomain("near(x[0], 1.)")
 left = CompiledSubDomain("near(x[0], 0.)")
 top = CompiledSubDomain("near(x[1], 1.)")
 bot = CompiledSubDomain("near(x[1], 0.)")
 
-
-
-class controldomain(SubDomain):
-    def inside(self, x, on_boundary):
-        return near(x[0], 1.) and (x[1] >= 0.4 - tol) and (x[1] <= 0.6 + tol)
-
-class restdomain(SubDomain):
-    def inside(self, x, on_boundary):
-        return near(x[0], 1.) and ((x[1] < 0.4) or (x[1] > 0.6))
-
-control = controldomain()
-right = restdomain()
 
 # Label boundaries, required for the objective
 boundary_parts = MeshFunction("size_t", mesh, mesh.topology().dim() - 1)
 left.mark(boundary_parts, 0)    # boundary part for outside temperature
 top.mark(boundary_parts, 0)    # boundary part for outside temperature
 bot.mark(boundary_parts, 0)    # boundary part for outside temperature
-right.mark(boundary_parts, 0)   # boundary part for outside temperature
-control.mark(boundary_parts, 1)   # boundary part where control is applied
+right.mark(boundary_parts, 1)   # boundary part where control is applied
+
 ds = Measure("ds", subdomain_data=boundary_parts)
 
-#class VelocityFieldExpression(Expression):
-#    def eval(self, value, x):
-#        value[0] = -1.0
-
-#    def value_shape(self):
-#        return (1,)
+#convetion constant over y-axis
+class VelocityFieldExpression(Expression):
+    def eval(self, value, x):
+        value[0] = -1.0
+        value[1] = 0.
+    def value_shape(self):
+        return (2,)
 
 def output_matrices():
     # Define function space
     parameters.linear_algebra_backend = "Eigen"
 
     U = FunctionSpace(mesh, "Lagrange", 1)
-#    W = VectorFunctionSpace(mesh, 'P', 1, dim=1)
+    W = VectorFunctionSpace(mesh, 'P', 1, dim=2)
 
     # Define test and trial functions
     v = TestFunction(U)
@@ -74,13 +65,13 @@ def output_matrices():
     u = Constant(1.0)
     y_out = Constant(1.0)
 
-#    w = Function(W)
-#    e = VelocityFieldExpression(domain=mesh, degree=1)
-#    w = interpolate(e, W)
+    w = Function(W)
+    e = VelocityFieldExpression(domain=mesh, degree=1)
+    w = interpolate(e, W)
 
     # Define variational formulation
     a = (y / k * v + alpha * inner(grad(y), grad(v))) * dx + alpha * gamma/beta * y * v * ds
-#    f_w = dot(w, grad(y)) * v * dx
+    f_w = dot(w, grad(y)) * v * dx
     f_y = y0 / k * v * dx
 
     f_y_out = alpha * gamma/beta * y_out * v * ds(0)
@@ -89,7 +80,7 @@ def output_matrices():
 
     A = assemble(a)
 
-#    B_w = assemble(f_w)
+    B_w = assemble(f_w)
     B_y = assemble(f_y)
 
     b_u = assemble(f_u)
@@ -100,18 +91,28 @@ def output_matrices():
     A_re = as_backend_type(A).sparray()
     scipy.io.mmwrite("A.mtx", A_re, symmetry="general")
 
-#    B_w_re = as_backend_type(B_w).sparray()
-#    scipy.io.mmwrite("B_w.mtx", B_w_re, symmetry="general")
+    B_w_re = as_backend_type(B_w).sparray()
+    scipy.io.mmwrite("B_w.mtx", B_w_re, symmetry="general")
 
     B_y_re = as_backend_type(B_y).sparray()
     scipy.io.mmwrite("B_y.mtx", B_y_re, symmetry="general")
 
-
+#mesh nodes, just testing
+    mesh_points = mesh.coordinates()
+    meshfile = open("meshfile.txt", "w")
+    meshfile.write(str(len(mesh_points)) + "\n")
+    for val in mesh_points:
+        meshfile.write(str(val) + "\n")
+    meshfile.close()
 #save coordinates of degree of freedoms (vertices with linear elements)
     gdim = mesh.geometry().dim()
     dofs = U.tabulate_dof_coordinates().reshape((-1, gdim))
     dof_file_x = open("dof_x.txt", "w")
     dof_file_y = open("dof_y.txt", "w")
+
+    dof_file_x.write(str(len(dofs)) + "\n")
+    dof_file_y.write(str(len(dofs)) + "\n")
+
     for val in dofs:
         dof_file_x.write(str(val[0]) + "\n")
         dof_file_y.write(str(val[1]) + "\n")
@@ -135,6 +136,7 @@ def output_matrices():
     b_y_out_file.close()
 
     param_file = open("parameters.txt", "w")
+    param_file.write(str((n)) + " n \n")
     param_file.write(str(float((alpha))) + " alpha \n")
     param_file.write(str(float((beta))) + " beta \n")
     param_file.write(str(float((gamma))) + " gamma \n")
