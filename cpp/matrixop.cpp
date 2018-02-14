@@ -331,7 +331,7 @@ void MATRIXOP::initialize_order() {
     //assumption: we have a n x n grid
     order.resize(n_y);
     for (int i = 0; i < n_y; ++i) {
-	order[i] = (int) discretization_n * (dof_x[i] + discretization_n * dof_y[i]);
+	order[i] = (int) (discretization_n * dof_x[i] + discretization_n * (discretization_n + 1) * dof_y[i]);
     }
 }
 
