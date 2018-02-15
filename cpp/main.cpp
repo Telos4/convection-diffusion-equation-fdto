@@ -44,6 +44,8 @@ int main(int argc, char** argv) {
     string vec_b_y_out = "../b_y_out.txt";
     string dof_x = "../dof_x.txt";
     string dof_y = "../dof_y.txt";
+    string result_folder = "../results";
+    string result_folder_prefix = "";
 
 
     int steps = 1;
@@ -75,6 +77,8 @@ int main(int argc, char** argv) {
     args::ValueFlag<string> vec_b_y_out_(parser, "vec_b_y_out", "vector b_y_out from PDE",{"b_y_out"});
     args::ValueFlag<string> dof_x_(parser, "dof_x", "vector dof_x from PDE",{"dof_x"});
     args::ValueFlag<string> dof_y_(parser, "dof_y", "vector dof_y from PDE",{"dof_y"});
+    args::ValueFlag<string> result_folder_(parser, "result_folder", "folder where results shall be stored",{"result_folder"});
+    args::ValueFlag<string> result_folder_prefix_(parser, "result_folder_prefix", "prefix for created folder",{"result_folder_prefix"});
 
     try {
 	parser.ParseCLI(argc, argv);
@@ -140,7 +144,12 @@ int main(int argc, char** argv) {
     if (dof_y_) {
 	dof_y = args::get(dof_y_);
     }
-
+    if (result_folder_) {
+        result_folder = args::get(result_folder_);
+    }
+    if (result_folder_prefix_) {
+        result_folder_prefix = args::get(result_folder_prefix_);
+    }
 
 
 
@@ -150,7 +159,8 @@ int main(int argc, char** argv) {
 	closed_cost_vs_horizon_length(MPC_horizon, steps, matrix_A, matrix_B_y, matrix_B_w, vec_b_u, vec_b_y_out, dof_x, dof_y, eps, y_ref, u_ref, dim2, convection, outputlevel);
     }
     else {
-	MATRIXOP data(MPC_horizon, matrix_A, matrix_B_y, matrix_B_w, vec_b_u, vec_b_y_out, dof_x, dof_y, eps, y_ref, u_ref, dim2, convection, closed_values, open_values, free_init_value);
+	MATRIXOP data(MPC_horizon, matrix_A, matrix_B_y, matrix_B_w, vec_b_u, vec_b_y_out, dof_x, dof_y, eps, y_ref, u_ref,
+                  dim2, convection, closed_values, open_values, free_init_value, result_folder, result_folder_prefix);
 	int status = optimize(steps, data, outputlevel);
 
 	if (status == 0) {
@@ -234,14 +244,17 @@ void closed_cost_vs_horizon_length(int max_MPC_horizon, int steps, string matrix
     bool free_init_value = false;
     valarray<double> costs(0.0, max_MPC_horizon);
     string foldername;
+    string result_folder = "../results";
+    string result_folder_prefix = "";
 
 
     //start at 1, 0 does not make sense
     for (int i = 1; i < max_MPC_horizon; ++i) {
-	MATRIXOP data(i, matrix_A, matrix_B_y, matrix_B_w, vec_b_u, vec_b_y_out, dof_x, dof_y, eps, y_ref, u_ref, dim2, convection, closed_values, open_values, free_init_value);
+	MATRIXOP data(i, matrix_A, matrix_B_y, matrix_B_w, vec_b_u, vec_b_y_out, dof_x, dof_y, eps, y_ref, u_ref, dim2,
+                  convection, closed_values, open_values, free_init_value, result_folder, result_folder_prefix);
 
 	if (i == 1) {
-	    data.create_folder();
+	    data.create_folder("");
 	    foldername = data.foldername;
 	}
 

@@ -25,9 +25,10 @@ class MATRIXOP {
 public:
 
     MATRIXOP();
-    MATRIXOP(int N_, string file_A, string file_B_y, string file_B_w, string file_b_u, string file_b_y, string file_dof_x, string file_dof_y,
-            double eps_, double y_ref_, double u_ref_, bool dim2, bool convection, bool closed_values, bool open_values,
-            bool free_init_value);
+    MATRIXOP(int N_, string file_A, string file_B_y, string file_B_w, string file_b_u, string file_b_y,
+             string file_dof_x, string file_dof_y, double eps_, double y_ref_, double u_ref_, bool dim2,
+             bool convection, bool closed_values, bool open_values, bool free_init_value, string result_folder,
+             string result_folder_name);
 
 
     /** Default destructor */
@@ -37,7 +38,7 @@ public:
     void read_vector(string filename, valarray<double> &vals);
     void print_matrix(valarray<int> &rows, valarray<int> &cols, valarray<double> &vals) const;
     void print_vector(valarray<double> &vals) const;
-    void create_folder();
+    void create_folder(string folder_prefix);
 
     double eval_f(valarray<double> &x);
     double vec_Q_vec(valarray<double> y, double y_ref);
@@ -64,7 +65,8 @@ public:
     double eps, y_ref, u_ref, closed_loop_cost;
 
     bool dim2, convection, closed_values, open_values, free_init_value;
-    string foldername;
+    string foldername;      // folder where results shall be stored
+    string result_folder;   // folder where the above folder shall be placed
 private:
 
 
