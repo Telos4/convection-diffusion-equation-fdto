@@ -56,18 +56,26 @@ bool HEAT_NLP::get_bounds_info(Index n, Number* x_l, Number* x_u,
 	Index m, Number* g_l, Number* g_u) {
 
 
-    double u_upper = 0.25;
-    double u_lower = -0.25;
-    double y_upper = 0.15;
-    double y_lower = -0.15;
-    double inf = 1e19;
+	double u_upper = 0.25;
+	double u_lower = -0.25;
+	double y_upper = 0.15;
+	double y_lower = -0.15;
+	double inf = 1e19;
 
-
-    //initial value
-    for (int i = 0; i < data.n_y; ++i) {
-	x_u[i] = data.y_old[data.n_y + i];
-	x_l[i] = data.y_old[data.n_y + i];
-    }
+	//initial value
+	if (data.free_init_value)
+	{
+		for (int i = 0; i < data.n_y; ++i) {
+			x_u[i] = inf;//data.y_old[data.n_y + i];
+			x_l[i] = -inf;//data.y_old[data.n_y + i];
+		}
+	}
+	else{
+		for (int i = 0; i < data.n_y; ++i) {
+			x_u[i] = data.y_old[data.n_y + i];
+			x_l[i] = data.y_old[data.n_y + i];
+		}
+	}
 
     //state constraints in 2d
     if (data.dim2) {

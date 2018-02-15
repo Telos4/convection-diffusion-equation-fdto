@@ -26,7 +26,8 @@ public:
 
     MATRIXOP();
     MATRIXOP(int N_, string file_A, string file_B_y, string file_B_w, string file_b_u, string file_b_y, string file_dof_x, string file_dof_y,
-            double eps_, double y_ref_, double u_ref_, bool dim2, bool convection, bool closed_values, bool open_values);
+            double eps_, double y_ref_, double u_ref_, bool dim2, bool convection, bool closed_values, bool open_values,
+            bool free_init_value);
 
 
     /** Default destructor */
@@ -62,7 +63,7 @@ public:
     int n_y, n_u, n_w, n_z, N, iter, discretization_n;
     double eps, y_ref, u_ref, closed_loop_cost;
 
-    bool dim2, convection, closed_values, open_values;
+    bool dim2, convection, closed_values, open_values, free_init_value;
     string foldername;
 private:
 

@@ -18,10 +18,13 @@ using namespace Ipopt;
 
 int optimize(int steps, MATRIXOP & data, int outputlevel);
 void closed_cost_vs_horizon_length(int max_MPC_horizon, int steps, string matrix_A, string matrix_B_y,
-	string matrix_B_w, string vec_b_u, string vec_b_y_out, string dof_x, string dof_y, double eps, double y_ref, double u_ref, bool dim2, bool convection, int outputlevel);
+	string matrix_B_w, string vec_b_u, string vec_b_y_out, string dof_x, string dof_y, double eps, double y_ref,
+                                   double u_ref, bool dim2, bool convection, int outputlevel);
 //void solver_test(MATRIXOP &data, int steps);
-void write_parameters(int MPC_horizon, int steps, string matrix_A, string matrix_B_y, string matrix_B_w, string vec_b_u, string vec_b_y_out, string dof_x, string dof_y,
-	double eps, double y_ref, double u_ref, bool dim2, bool convection, bool closed_values, bool open_values, bool cost_vs_horizon, string foldername);
+void write_parameters(int MPC_horizon, int steps, string matrix_A, string matrix_B_y, string matrix_B_w, string vec_b_u,
+                      string vec_b_y_out, string dof_x, string dof_y, double eps, double y_ref, double u_ref, bool dim2,
+                      bool convection, bool closed_values, bool open_values, bool free_init_value, bool cost_vs_horizon,
+                      string foldername);
 
 int main(int argc, char** argv) {
     bool dim2 = false;
@@ -29,6 +32,7 @@ int main(int argc, char** argv) {
     bool closed_values = false;
     bool open_values = false;
     bool cost_vs_horizon = false;
+    bool free_init_value = false;
 
     double eps = 10e-3;
     double y_ref = 0.0;
@@ -42,10 +46,10 @@ int main(int argc, char** argv) {
     string dof_y = "../dof_y.txt";
 
 
-    int steps = 100;
-    int MPC_horizon = 20;
+    int steps = 1;
+    int MPC_horizon = 100;
 
-    int outputlevel = 0;
+    int outputlevel = 5;
 
     args::ArgumentParser parser("convection diffusion equation 1d.", "This goes after the options.");
     args::HelpFlag help(parser, "help", "Display this help menu",{'h', "help"});
@@ -55,6 +59,7 @@ int main(int argc, char** argv) {
     args::Flag convection_(parser, "convection", "turn convection on",{'c', "convection"});
     args::Flag closed_values_(parser, "closed values", "save states of the closed loop",{"cv", "closedvalues"});
     args::Flag open_values_(parser, "open values", "save states of all open loop",{"ov", "openvalues"});
+    args::Flag free_init_value_(parser, "free initial value", "indicates whether the intial state should be free",{"fi", "free-init-value"});
     args::Flag cost_vs_horizon_(parser, "cost vs mpc horizon plot",
 	    "create data for cost vs mpc horizon plot, closed and open loop values will not be written, MPC_horizon functions as your maximal MPC horizon",{"cost_vs_horizon"});
     args::ValueFlag<int> MPC_horizon_(parser, "mpc horizon", "MPC horizon, N >= 1",{'N', "mpc"});
@@ -93,6 +98,7 @@ int main(int argc, char** argv) {
     closed_values = closed_values_;
     open_values = open_values_;
     cost_vs_horizon = cost_vs_horizon_;
+    free_init_value = free_init_value_;
 
 
     if (MPC_horizon_) {
@@ -144,7 +150,7 @@ int main(int argc, char** argv) {
 	closed_cost_vs_horizon_length(MPC_horizon, steps, matrix_A, matrix_B_y, matrix_B_w, vec_b_u, vec_b_y_out, dof_x, dof_y, eps, y_ref, u_ref, dim2, convection, outputlevel);
     }
     else {
-	MATRIXOP data(MPC_horizon, matrix_A, matrix_B_y, matrix_B_w, vec_b_u, vec_b_y_out, dof_x, dof_y, eps, y_ref, u_ref, dim2, convection, closed_values, open_values);
+	MATRIXOP data(MPC_horizon, matrix_A, matrix_B_y, matrix_B_w, vec_b_u, vec_b_y_out, dof_x, dof_y, eps, y_ref, u_ref, dim2, convection, closed_values, open_values, free_init_value);
 	int status = optimize(steps, data, outputlevel);
 
 	if (status == 0) {
@@ -156,7 +162,9 @@ int main(int argc, char** argv) {
 
 
 	if (closed_values || open_values) {
-	    write_parameters(MPC_horizon, steps, matrix_A, matrix_B_y, matrix_B_w, vec_b_u, vec_b_y_out, dof_x, dof_y, eps, y_ref, u_ref, dim2, convection, closed_values, open_values, cost_vs_horizon, data.foldername);
+	    write_parameters(MPC_horizon, steps, matrix_A, matrix_B_y, matrix_B_w, vec_b_u, vec_b_y_out, dof_x, dof_y, eps,
+                         y_ref, u_ref, dim2, convection, closed_values, open_values, free_init_value, cost_vs_horizon,
+                         data.foldername);
 	}
     }
 
@@ -223,13 +231,14 @@ void closed_cost_vs_horizon_length(int max_MPC_horizon, int steps, string matrix
     int status;
     bool closed_values = false;
     bool open_values = false;
+    bool free_init_value = false;
     valarray<double> costs(0.0, max_MPC_horizon);
     string foldername;
 
 
     //start at 1, 0 does not make sense
     for (int i = 1; i < max_MPC_horizon; ++i) {
-	MATRIXOP data(i, matrix_A, matrix_B_y, matrix_B_w, vec_b_u, vec_b_y_out, dof_x, dof_y, eps, y_ref, u_ref, dim2, convection, closed_values, open_values);
+	MATRIXOP data(i, matrix_A, matrix_B_y, matrix_B_w, vec_b_u, vec_b_y_out, dof_x, dof_y, eps, y_ref, u_ref, dim2, convection, closed_values, open_values, free_init_value);
 
 	if (i == 1) {
 	    data.create_folder();
@@ -259,19 +268,20 @@ void closed_cost_vs_horizon_length(int max_MPC_horizon, int steps, string matrix
 	cout << "couldnt open ofstream" << endl;
     }
 
-    write_parameters(max_MPC_horizon, steps, matrix_A, matrix_B_y, matrix_B_w, vec_b_u, vec_b_y_out, dof_x, dof_y, eps, y_ref, u_ref, dim2, convection, closed_values, open_values, true, foldername);
+    write_parameters(max_MPC_horizon, steps, matrix_A, matrix_B_y, matrix_B_w, vec_b_u, vec_b_y_out, dof_x, dof_y, eps,
+                     y_ref, u_ref, dim2, convection, closed_values, open_values, free_init_value, true, foldername);
 
     out.close();
 }
 
 void write_parameters(int MPC_horizon, int steps, string matrix_A, string matrix_B_y, string matrix_B_w, string vec_b_u, string vec_b_y_out, string dof_x, string dof_y,
-	double eps, double y_ref, double u_ref, bool dim2, bool convection, bool closed_values, bool open_values, bool cost_vs_horizon, string foldername) {
+	double eps, double y_ref, double u_ref, bool dim2, bool convection, bool closed_values, bool open_values, bool free_init_value, bool cost_vs_horizon, string foldername) {
     double alpha = 0, beta = 0, gamma = 0;
     int n = 0;
     string trash;
     ifstream pythonparam("../parameters.txt");
     if (pythonparam.is_open()) {
-	pythonparam >> n >> trash >> alpha >> trash >> beta >> trash >> gamma;
+	pythonparam >> alpha >> trash >> beta >> trash >> gamma;
 	pythonparam.close();
     }
     else {
@@ -305,6 +315,7 @@ void write_parameters(int MPC_horizon, int steps, string matrix_A, string matrix
 	out << convection << "\t convection \n";
 	out << closed_values << "\t closed_values \n";
 	out << open_values << "\t open_values \n";
+	out << free_init_value << "\t free_init_value \n";
 	out << function << "\t function \n";
 	out << matrix_A << "\t matrix_A \n";
 	out << matrix_B_y << "\t matrix_B_y \n";

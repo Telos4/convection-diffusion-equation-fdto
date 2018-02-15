@@ -15,7 +15,8 @@ MATRIXOP::MATRIXOP() {
 }
 
 MATRIXOP::MATRIXOP(int N_, string file_A, string file_B_y, string file_B_w, string file_b_u, string file_b_y, string file_dof_x, string file_dof_y,
-	double eps_, double y_ref_, double u_ref_, bool dim2_, bool convection_, bool closed_values_, bool open_values_) {
+	double eps_, double y_ref_, double u_ref_, bool dim2_, bool convection_, bool closed_values_, bool open_values_,
+    bool free_init_value_) {
 
     dim2 = dim2_;
     convection = convection_;
@@ -62,6 +63,8 @@ MATRIXOP::MATRIXOP(int N_, string file_A, string file_B_y, string file_B_w, stri
 
     closed_values = closed_values_;
     open_values = open_values_;
+
+    free_init_value = free_init_value_;
 
     //initialize A_eq
     A_eq();
