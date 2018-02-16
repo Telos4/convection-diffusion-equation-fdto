@@ -51,7 +51,7 @@ int main(int argc, char** argv) {
     int steps = 1;
     int MPC_horizon = 100;
 
-    int outputlevel = 5;
+    int outputlevel = 0;
 
     args::ArgumentParser parser("convection diffusion equation 1d.", "This goes after the options.");
     args::HelpFlag help(parser, "help", "Display this help menu",{'h', "help"});
