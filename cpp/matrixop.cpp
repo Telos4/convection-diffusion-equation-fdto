@@ -15,9 +15,9 @@ MATRIXOP::MATRIXOP() {
 }
 
 MATRIXOP::MATRIXOP(int N_, string file_A, string file_B_y, string file_B_w, string file_b_u, string file_b_y,
-                   string file_dof_x, string file_dof_y, double eps_, double y_ref_, double u_ref_, bool dim2_,
-                   bool convection_, bool closed_values_, bool open_values_, bool free_init_value_, string result_folder_,
-                    string result_folder_prefix_) {
+	string file_dof_x, string file_dof_y, double eps_, double y_ref_, double u_ref_, double u_upper_, double u_lower_, double y_upper_, double y_lower_, double w_upper_, double w_lower_, bool dim2_,
+	bool convection_, bool closed_values_, bool open_values_, bool free_init_value_, string result_folder_,
+	string result_folder_prefix_) {
 
     dim2 = dim2_;
     convection = convection_;
@@ -46,6 +46,8 @@ MATRIXOP::MATRIXOP(int N_, string file_A, string file_B_y, string file_B_w, stri
 
     if (convection) {
 	n_w = 1;
+	w_upper = w_upper_;
+	w_lower = w_lower_;
     }
     else {
 	n_w = 0;
@@ -56,6 +58,11 @@ MATRIXOP::MATRIXOP(int N_, string file_A, string file_B_y, string file_B_w, stri
     eps = eps_;
     y_ref = y_ref_;
     u_ref = u_ref_;
+    u_upper = u_upper_;
+    u_lower = u_lower_;
+    y_upper = y_upper_;
+    y_lower = y_lower_;
+
 
     iter = 0;
     closed_loop_cost = 0;
@@ -95,8 +102,8 @@ MATRIXOP::MATRIXOP(int N_, string file_A, string file_B_y, string file_B_w, stri
 
 
     if (closed_values || open_values) {
-        result_folder = result_folder_;
-	    create_folder(result_folder_prefix_);
+	result_folder = result_folder_;
+	create_folder(result_folder_prefix_);
     }
 }
 
@@ -109,7 +116,7 @@ void MATRIXOP::read_matrix(string filename, valarray<int> &rows, valarray<int> &
     ifstream ifs(filename.c_str(), ifstream::in);
 
     if (ifs.is_open()) {
-	//skip comments in .mtx files 
+	//skip comments in .mtx files
 	string trash;
 
 	getline(ifs, trash);
@@ -132,7 +139,8 @@ void MATRIXOP::read_matrix(string filename, valarray<int> &rows, valarray<int> &
 	}
     }
     else {
-	cout << endl << "File " << filename << " is not open" << endl;
+	cout << endl << "could'nt open  " << filename << " ... terminating" << endl;
+	exit(1);
     }
 }
 
@@ -149,7 +157,8 @@ void MATRIXOP::read_vector(string filename, valarray<double> &vals) {
 	}
     }
     else {
-	cout << endl << "File " << filename << " is not open" << endl;
+	cout << endl << "could'nt open  " << filename << " ... terminating" << endl;
+	exit(1);
     }
 }
 
@@ -183,12 +192,14 @@ void MATRIXOP::create_folder(string result_folder_prefix) {
     }
     catch (boost::filesystem::filesystem_error &e) {
 	std::cerr << e.what() << '\n';
+	exit(1);
     }
     try {
 	boost::filesystem::create_directory(p);
     }
     catch (boost::filesystem::filesystem_error &e) {
 	std::cerr << e.what() << '\n';
+	exit(1);
     }
 }
 
@@ -334,7 +345,7 @@ void MATRIXOP::A_eq() {
 }
 
 void MATRIXOP::initialize_order() {
-    //assumption: we have a n x n grid
+
     order.resize(n_y);
     for (int i = 0; i < n_y; ++i) {
 	order[i] = (int) (discretization_n * dof_x[i] + discretization_n * (discretization_n + 1) * dof_y[i]);
@@ -356,4 +367,3 @@ valarray<double> MATRIXOP::matrix_vector_mult(valarray<int> &rows,
     }
     return re;
 }
-
