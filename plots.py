@@ -131,6 +131,8 @@ class SimulationResult:
                 ax.set_ylim([-0.5, 0.5])
 
                 ax.set(xlabel='$\Omega$', ylabel='$y$')
+                ax.xaxis.label.set_size(20)
+                ax.yaxis.label.set_size(20)
 
                 ax.legend(loc='upper left')
                 plt.show()
@@ -174,8 +176,8 @@ def plot_closed_loop_convergence(results, reference, output_file='test.pdf'):
     plt.rc('text', usetex=True)
     plt.rc('font', family='serif')
     plt.legend(loc='best')
-    plt.xlabel('$k$')
-    plt.ylabel('$\|y_{\mu_{N}}(k,x) - y^*(k)\|$')
+    plt.xlabel('$k$', fontsize=20)
+    plt.ylabel('$\|y_{\mu_{N}}(k,x) - y^*(k)\|$', fontsize=20)
     plt.title('Convergence of MPC trajectories')
     plt.savefig(output_file)
     plt.show()
@@ -191,8 +193,8 @@ def plot_cumulative_closed_loop_cost(results, reference, output_file='test.pdf')
     plt.rc('text', usetex=True)
     plt.rc('font', family='serif')
     plt.legend(loc='best')
-    plt.xlabel('$L$')
-    plt.ylabel('$J^{cl}_{L}(y,\mu_N)$')
+    plt.xlabel('$L$', fontsize=20)
+    plt.ylabel('$J^{cl}_{L}(y,\mu_N)$', fontsize=20)
     plt.title('Cumulative closed-loop cost')
     plt.savefig(output_file)
     plt.show()
@@ -216,8 +218,8 @@ def plot_cost_convergence(results, output_file='test.pdf'):
     plt.rc('text', usetex=True)
     plt.rc('font', family='serif')
     plt.legend(loc='best')
-    plt.xlabel('$N$')
-    plt.ylabel('$J^{cl}_{' + str(L) + '}(y,\mu_N)$')
+    plt.xlabel('$N$', fontsize=20)
+    plt.ylabel('$J^{cl}_{' + str(L) + '}(y,\mu_N)$', fontsize=20)
     plt.title('Convergence of closed-loop cost')
     plt.savefig(output_file)
     plt.show()
@@ -240,8 +242,8 @@ def plot_turnpike(results, reference, output_file='test.pdf'):
     plt.rc('text', usetex=True)
     plt.rc('font', family='serif')
     plt.legend(loc='best')
-    plt.xlabel('$k$')
-    plt.ylabel('$\|y_{u^*_{N}}(k,x) - y^*(k)\|$')
+    plt.xlabel('$k$', fontsize=20)
+    plt.ylabel('$\|y_{u^*_{N}}(k,x) - y^*(k)\|$', fontsize=20)
     plt.title('Turnpike behaviour')
     plt.savefig(output_file)
     plt.show()
@@ -283,7 +285,7 @@ if __name__ == "__main__":
     p = Path(result_folder)
     #result_folder_list = map(str, list(p.glob('mpc_N=5*')) + list(p.glob('mpc_N=10*')) + list(p.glob('mpc_N=20*')) + list(p.glob('mpc_N=30*'))
     #                        + list(p.glob('mpc_N=40*')) + list(p.glob('mpc_N=49*')))    # find all folders with results
-    result_folder_list = map(str, list(p.glob('mpc_N=*')))
+    result_folder_list = map(str, list(p.glob('mpc_N=3_*')))
     #result_folder_list = map(str, list(p.glob('mpc_N=5_*')) + list(p.glob('mpc_N=10*')) + list(p.glob('mpc_N=20_*'))
     #                            + list(p.glob('mpc_N=30_*')) + list(p.glob('mpc_N=40_*')) + list(p.glob('mpc_N=50_*')))
     mpc_list = []
@@ -296,15 +298,16 @@ if __name__ == "__main__":
     ref_result = SimulationResult(ref_result_folder)
 
     # uncontrolled
-    #unc_folder = map(str, list(p.glob('unc_*')))[0]
-    #unc_result = SimulationResult(unc_folder)
+    unc_folder = map(str, list(p.glob('unc_*')))[0]
+    unc_result = SimulationResult(unc_folder)
 
     # create turnpike plot
     #plot_turnpike(mpc_list, ref_result, output_file='figures/turnpike.pdf')
 
-    mpc_list_ = filter(lambda x: x.N <= 30, mpc_list)
+
     # create plot for convergence of mpc cost
-    plot_cost_convergence(mpc_list_, output_file='figures/cost_convergence.pdf')
+    #mpc_list_ = filter(lambda x: x.N <= 30, mpc_list)
+    #plot_cost_convergence(mpc_list_, output_file='figures/cost_convergence.pdf')
 
     # create plot for convergence of mpc trajectories
     #plot_closed_loop_convergence(mpc_list, ref_result, output_file='figures/trajectory_convergence.pdf')
@@ -312,11 +315,11 @@ if __name__ == "__main__":
     # create plot for cumulative closed loop cost
     #plot_cumulative_closed_loop_cost(mpc_list, ref_result, output_file='figures/cumulative_cost.pdf')
 
-    #unc_result.plot_closed_loop('figures/uncontrolled.mp4', L=100)
+    unc_result.plot_closed_loop('figures/uncontrolled.mp4', L=100)
 
     # create videos of mpc closed loop simulations
-    #for r in mpc_list:
-    #    r.plot_closed_loop('figures/heat_N={}.mp4'.format(r.N), L=100, reference=ref_result)
+    for r in mpc_list:
+        r.plot_closed_loop('figures/heat_N={}.mp4'.format(r.N), L=100, reference=ref_result)
 
 
 
