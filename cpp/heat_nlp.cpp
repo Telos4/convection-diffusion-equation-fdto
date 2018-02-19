@@ -42,7 +42,7 @@ bool HEAT_NLP::get_nlp_info(Index& n, Index& m, Index& nnz_jac_g,
 	nnz_jac_g = (data.B_y_rows.size() + data.A_rows.size() + data.b_u.size()) * data.N;
     }
 
-    //mit Q = I, R = I for no convection 
+    //mit Q = I, R = I for no convection
     //don't need this when using approximation of hessian of the lagrangian with convection on
     nnz_h_lag = data.n_z;
 
@@ -56,26 +56,21 @@ bool HEAT_NLP::get_bounds_info(Index n, Number* x_l, Number* x_u,
 	Index m, Number* g_l, Number* g_u) {
 
 
-	double u_upper = 0.25;
-	double u_lower = -0.25;
-	double y_upper = 0.15;
-	double y_lower = -0.15;
-	double inf = 1e19;
+    double inf = 1e19;
 
-	//initial value
-	if (data.free_init_value)
-	{
-		for (int i = 0; i < data.n_y; ++i) {
-			x_u[i] = inf;//data.y_old[data.n_y + i];
-			x_l[i] = -inf;//data.y_old[data.n_y + i];
-		}
+    //initial value
+    if (data.free_init_value && data.iter == 0) {
+	for (int i = 0; i < data.n_y; ++i) {
+	    x_u[i] = inf; //data.y_old[data.n_y + i];
+	    x_l[i] = -inf; //data.y_old[data.n_y + i];
 	}
-	else{
-		for (int i = 0; i < data.n_y; ++i) {
-			x_u[i] = data.y_old[data.n_y + i];
-			x_l[i] = data.y_old[data.n_y + i];
-		}
+    }
+    else {
+	for (int i = 0; i < data.n_y; ++i) {
+	    x_u[i] = data.y_old[data.n_y + i];
+	    x_l[i] = data.y_old[data.n_y + i];
 	}
+    }
 
     //state constraints in 2d
     if (data.dim2) {
@@ -91,8 +86,8 @@ bool HEAT_NLP::get_bounds_info(Index n, Number* x_l, Number* x_u,
 		double x = data.dof_x[i];
 		double y = data.dof_y[i];
 		if (x >= left && x <= right && y >= bot && y <= top) {
-		    x_u[k * data.n_y + i] = y_upper;
-		    x_l[k * data.n_y + i] = y_lower;
+		    x_u[k * data.n_y + i] = data.y_upper;
+		    x_l[k * data.n_y + i] = data.y_lower;
 		}
 		else {
 		    x_u[k * data.n_y + i] = inf;
@@ -117,8 +112,8 @@ bool HEAT_NLP::get_bounds_info(Index n, Number* x_l, Number* x_u,
 
 	    //bound for y center
 	    for (int i = left; i < data.n_y - left + 1; ++i) {
-		x_u[k * data.n_y + i] = y_upper;
-		x_l[k * data.n_y + i] = y_lower;
+		x_u[k * data.n_y + i] = data.y_upper;
+		x_l[k * data.n_y + i] = data.y_lower;
 	    }
 	    /*
 		    //bound for y right
@@ -132,15 +127,15 @@ bool HEAT_NLP::get_bounds_info(Index n, Number* x_l, Number* x_u,
 
     //bound for u
     for (int i = (data.N + 1) * data.n_y; i < (data.N + 1) * data.n_y + data.N * data.n_u; ++i) {
-	x_u[i] = u_upper;
-	x_l[i] = u_lower;
+	x_u[i] = data.u_upper;
+	x_l[i] = data.u_lower;
     }
 
     if (data.convection) {
 	//bound for w
 	for (int i = (data.N + 1) * data.n_y + data.N * data.n_u; i < data.n_z; ++i) {
-	    x_u[i] = inf;
-	    x_l[i] = -inf;
+	    x_u[i] = data.w_upper;
+	    x_l[i] = data.w_lower;
 	}
     }
 
@@ -170,7 +165,7 @@ bool HEAT_NLP::get_starting_point(Index n, bool init_x, Number* x,
     assert(init_lambda == false);
 
 
-    //use the shifted solution from the previous solution, 
+    //use the shifted solution from the previous solution,
     //for the uninitialized values use the last step again
     for (int i = 0; i < data.N * data.n_y; ++i) {
 	x[i] = data.y_old[data.n_y + i];
@@ -234,7 +229,7 @@ bool HEAT_NLP::eval_g(Index n, const Number* x, bool new_x,
 	z[i] = x[i];
     }
     //this works with convection on as well. You're then looking at the matrix [A_eq, 0].
-    //Because of the 0 matrix the matrix vector multiplication works, despite the matrix 
+    //Because of the 0 matrix the matrix vector multiplication works, despite the matrix
     //having the wrong dimension. Add the non linear part afterwards
     valarray<double> eval1 = data.matrix_vector_mult(data.A_eq_rows, data.A_eq_cols,
 	    data.A_eq_vals, z);
@@ -258,11 +253,11 @@ bool HEAT_NLP::eval_g(Index n, const Number* x, bool new_x,
 }
 
 
-//copy routine from A_eq and change 
+//copy routine from A_eq and change
 //works only if A and B_w have the same pattern.
 //enough for testing for now
 //implement general case later
-//as long as A and B_w should always have the same pattern, because 
+//as long as A and B_w should always have the same pattern, because
 //need to change nnz_jacobian in get_nlp_info as well
 
 bool HEAT_NLP::eval_jac_g(Index n, const Number* x, bool new_x,
@@ -459,6 +454,28 @@ void HEAT_NLP::finalize_solution(SolverReturn status,
 	ofstream ofs_u(data.foldername + "closedloop_u.txt", ofstream::app);
 	ofstream ofs_cost(data.foldername + "closedloop_cost.txt", ofstream::app);
 
+	//write initial values
+	if (data.iter == 0) {
+	    if (data.dim2) {
+		valarray<double> temp(data.n_y);
+
+		for (int i = 0; i < data.n_y; ++i) {
+		    temp[data.order[i]] = x[i];
+		}
+		for (int i = 0; i < data.n_y; ++i) {
+		    ofs_y << temp[i] << " ";
+		}
+		ofs_y << endl;
+	    }
+
+	    else {
+		for (int i = 0; i < data.n_y; ++i) {
+		    ofs_y << x[i] << " ";
+		}
+		ofs_y << endl;
+	    }
+	}
+
 	//order data, then write
 	if (data.dim2) {
 	    valarray<double> temp(data.n_y);
@@ -511,12 +528,34 @@ void HEAT_NLP::finalize_solution(SolverReturn status,
 	ofstream ofs_y_open(filename_y, ofstream::trunc);
 	ofstream ofs_u_open(filename_u, ofstream::trunc);
 
-	for (int k = 0; k < data.N + 1; ++k) {
-	    for (int i = 0; i < data.n_y; ++i) {
-		ofs_y_open << x[k * data.n_y + i] << " ";
+
+	if (data.dim2) {
+	    valarray<double> temp((data.N + 1) * data.n_y);
+
+	    for (int k = 0; k < data.N + 1; ++k) {
+		for (int i = 0; i < data.n_y; ++i) {
+		    temp[data.order[i] + k * data.n_y] = x[k * data.n_y + i];
+		}
 	    }
-	    ofs_y_open << endl;
+
+	    for (int k = 0; k < data.N + 1; ++k) {
+		for (int i = 0; i < data.n_y; ++i) {
+		    ofs_y_open << temp[k * data.n_y + i] << " ";
+		}
+		ofs_y_open << endl;
+	    }
 	}
+
+	else {
+	    for (int k = 0; k < data.N + 1; ++k) {
+		for (int i = 0; i < data.n_y; ++i) {
+		    ofs_y_open << x[k * data.n_y + i] << " ";
+		}
+		ofs_y_open << endl;
+	    }
+	}
+
+
 
 
 	for (int k = 0; k < data.N; ++k) {
@@ -546,4 +585,3 @@ void HEAT_NLP::finalize_solution(SolverReturn status,
     //count for closed loop
     ++data.iter;
 }
-

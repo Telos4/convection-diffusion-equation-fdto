@@ -135,7 +135,7 @@ def output_matrices():
         b_y_out_file.write(str(val) + "\n")
     b_y_out_file.close()
 
-    param_file = open("parameters.txt", "w")
+    param_file = open("python_parameters.txt", "w")
     param_file.write(str((n)) + " n \n")
     param_file.write(str(float((alpha))) + " alpha \n")
     param_file.write(str(float((beta))) + " beta \n")

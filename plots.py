@@ -20,13 +20,22 @@ import matplotlib.animation as manimation
 from subprocess import call
 from pathlib import Path
 
+lb_y = -0.15
+ub_y =  0.15
+
+lb_u = -0.25
+ub_u =  0.25
+
+delta_t = 1.0e-2
+linewidth_global = 2.0
+
 class SimulationResult:
     def __init__(self, results_folder):
         p = Path(results_folder)
 
         q = p / 'closedloop_y.txt'
         if q.exists():
-            self.y_cl = np.loadtxt(str(q), ndmin=2)
+            self.y_cl = np.fliplr(np.loadtxt(str(q), ndmin=2))
 
         q = p / 'closedloop_u.txt'
         if q.exists():
@@ -48,7 +57,7 @@ class SimulationResult:
         for i in range(0, len(open_loops_y)):
             q = p / ('openloop_y'+str(i)+'.txt')
             if q.exists():
-                self.y_ol.append(np.loadtxt(str(q), ndmin=1))
+                self.y_ol.append(np.fliplr(np.loadtxt(str(q), ndmin=1)))
 
         open_loops_u = list(p.glob('openloop_u*'))
         if len(open_loops_u) > 0:
@@ -73,34 +82,59 @@ class SimulationResult:
             print("closed loop not available")
 
         try:
-            self.N = len(self.u_ol[0])
-            self.n_y = len(self.y_ol[0][0])
+            self.N = len(self.u_ol[0])      # MPC horizon
+            self.n_y = len(self.y_ol[0][0]) # number of finite element nodes
         except AttributeError:
             print("open loop not available")
 
 
 
-    def plot_closed_loop(self, reference=None):
+    def plot_closed_loop(self, output_file, reference=None, L=None):
+        if L is None:
+            L = self.L
         FFMpegWriter = manimation.writers['ffmpeg']
-        metadata = dict(title='closed_loop_L='+str(self.L), artist='Matplotlib',
+        metadata = dict(title='closed_loop_N='+str(self.N), artist='Matplotlib',
                     comment='Movie support!')
         writer = FFMpegWriter(fps=15, metadata=metadata)
 
-        domain = np.arange(0.0, 1.0, 1.0/self.n_y)
-        fig, ax = plt.subplots()
-        ax.hold(False)
+        plt.rc('text', usetex=True)
+        plt.rc('font', family='serif')
 
-        with writer.saving(fig, "results/sim_N=" + str(self.N) + ".mp4", 100):
-            for i in range(0, self.L):
-                ax.plot(domain, self.y_cl[i])
+        h = 1.0/(self.n_y - 1)
+        domain = np.arange(0.0, 1.0+h, h)
+        subdomain = np.arange(0.25, 0.75+h, h)
+        fig, ax = plt.subplots()
+        #ax.hold(False)
+
+        with writer.saving(fig, output_file, 100):
+            for i in range(0, L):
+                ax.plot(domain, self.y_cl[i], color='k', linewidth=linewidth_global, label='$y_{\mu_{' + str(self.N) + '}}$')
+
+                ax.hold(True)
+                # plot constraints
+                ax.plot(subdomain, lb_y * np.ones(subdomain.shape), color='r', linewidth=linewidth_global)
+                ax.plot(subdomain, ub_y * np.ones(subdomain.shape), color='r', linewidth=linewidth_global)
+
+                ax.plot([0.95, 1.0], [ub_u, ub_u], color='b', linewidth=linewidth_global)
+                ax.plot([0.95, 1.0], [lb_u, lb_u], color='b', linewidth=linewidth_global)
+
+                # plot text with time
+                ax.text(0.8, 0.4, 't = {:5.3f}'.format((i+1)*delta_t), bbox={'facecolor':'white', 'pad':10})
+                ax.hold(False)
 
                 if reference:
                     ax.hold(True)
-                    ax.plot(domain, reference.y_ol[0][1+i])
+                    ax.plot(domain, reference.y_ol[0][1+i], color='g', linewidth=linewidth_global, label='$y^*$')
                     ax.hold(False)
 
                 ax.set_xlim([0.0, 1.0])
                 ax.set_ylim([-0.5, 0.5])
+
+                ax.set(xlabel='$\Omega$', ylabel='$y$')
+                ax.xaxis.label.set_size(20)
+                ax.yaxis.label.set_size(20)
+
+                ax.legend(loc='upper left')
                 plt.show()
                 writer.grab_frame()
 
@@ -147,27 +181,6 @@ class SimulationResult:
             plt.show()
         pass
 
-def movie_example():
-    FFMpegWriter = manimation.writers['ffmpeg']
-    metadata = dict(title='Movie Test', artist='Matplotlib',
-            comment='Movie support!')
-    writer = FFMpegWriter(fps=15, metadata=metadata)
-
-    fig = plt.figure()
-    l, = plt.plot([], [], 'k-o')
-
-    plt.xlim(-5, 5)
-    plt.ylim(-5, 5)
-
-    x0, y0 = 0, 0
-
-    with writer.saving(fig, "writer_test.mp4", 100):
-        for i in range(100):
-            x0 += 0.1 * np.random.randn()
-            y0 += 0.1 * np.random.randn()
-        l.set_data(x0, y0)
-        writer.grab_frame()
-
 def plot_closed_loop_convergence(results, reference, output_file='test.pdf'):
     fig, ax = plt.subplots()
     ax.hold(True)
@@ -181,13 +194,13 @@ def plot_closed_loop_convergence(results, reference, output_file='test.pdf'):
             norm_diffs.append(np.linalg.norm(y[j] - y_ref[1+j]))
 
         domain = np.arange(0, 0+r.L)
-        ax.plot(domain, norm_diffs, label='N='+str(r.N))
+        ax.plot(domain, norm_diffs, label='N='+str(r.N), linewidth=linewidth_global)
 
     plt.rc('text', usetex=True)
     plt.rc('font', family='serif')
     plt.legend(loc='best')
-    plt.xlabel('$k$')
-    plt.ylabel('$\|x_{\mu_{N}}(k,x) - x^*(k)\|$')
+    plt.xlabel('$k$', fontsize=20)
+    plt.ylabel('$\|y_{\mu_{N}}(k,x) - y^*(k)\|$', fontsize=20)
     plt.title('Convergence of MPC trajectories')
     plt.savefig(output_file)
     plt.show()
@@ -198,13 +211,13 @@ def plot_cumulative_closed_loop_cost(results, reference, output_file='test.pdf')
 
     for r in results:
         domain = np.arange(0.0, r.L)
-        ax.plot(domain, r.closed_loop_cost, label='N='+str(r.N))
+        ax.plot(domain, r.closed_loop_cost, label='N='+str(r.N), linewidth=linewidth_global)
 
     plt.rc('text', usetex=True)
     plt.rc('font', family='serif')
     plt.legend(loc='best')
-    plt.xlabel('$L$')
-    plt.ylabel('$J^{cl}_{L}(x,\mu_N)$')
+    plt.xlabel('$L$', fontsize=20)
+    plt.ylabel('$J^{cl}_{L}(y,\mu_N)$', fontsize=20)
     plt.title('Cumulative closed-loop cost')
     plt.savefig(output_file)
     plt.show()
@@ -222,13 +235,14 @@ def plot_cost_convergence(results, output_file='test.pdf'):
 
     fig, ax = plt.subplots()
     ax.hold(False)
-    ax.plot(Ns, Js)
+    ax.plot(Ns, Js, linewidth=linewidth_global)
+    ax.set_xlim([np.min(Ns), np.max(Ns)])
 
     plt.rc('text', usetex=True)
     plt.rc('font', family='serif')
     plt.legend(loc='best')
-    plt.xlabel('$N$')
-    plt.ylabel('$J^{cl}_{' + str(L) + '}(x,\mu_N)$')
+    plt.xlabel('$N$', fontsize=20)
+    plt.ylabel('$J^{cl}_{' + str(L) + '}(y,\mu_N)$', fontsize=20)
     plt.title('Convergence of closed-loop cost')
     plt.savefig(output_file)
     plt.show()
@@ -246,13 +260,13 @@ def plot_turnpike(results, reference, output_file='test.pdf'):
             norm_diffs.append(np.linalg.norm(y[j] - y_ref[0+j]))
 
         domain = np.arange(0, 0+r.N+1)
-        ax.plot(domain, norm_diffs, label='N=' + str(r.N))
+        ax.plot(domain, norm_diffs, label='N=' + str(r.N), linewidth=linewidth_global)
 
     plt.rc('text', usetex=True)
     plt.rc('font', family='serif')
     plt.legend(loc='best')
-    plt.xlabel('$k$')
-    plt.ylabel('$\|x_{u^*_{N}}(k,x) - x^*(k)\|$')
+    plt.xlabel('$k$', fontsize=20)
+    plt.ylabel('$\|y_{u^*_{N}}(k,x) - y^*(k)\|$', fontsize=20)
     plt.title('Turnpike behaviour')
     plt.savefig(output_file)
     plt.show()
@@ -279,18 +293,24 @@ if __name__ == "__main__":
     sim = False
     if sim == True:
         # generate results
-        max_N = 5
-        L = 50
-        run_simulations(range(1,max_N), L, exec_folder, result_folder, prefix="mpc_")
+        min_N = 50
+        max_N = 70
+        L = 250
+        run_simulations(range(min_N,max_N), L, exec_folder, result_folder, prefix="mpc_")
 
         # reference solution (= open loop simulation with long horizon)
-        run_simulations([max_N + L], 1, exec_folder, result_folder, prefix="ref_", ref=False)
+        run_simulations([max_N + L], 1, exec_folder, result_folder, prefix="ref_", ref=True)
+
+    #run_simulations([1], 250, exec_folder, result_folder, prefix="unc_")
 
     # handle results
     # MPC simulations
     p = Path(result_folder)
-    result_folder_list = map(str, list(p.glob('mpc_N=5*')) + list(p.glob('mpc_N=10*')) + list(p.glob('mpc_N=20*')) + list(p.glob('mpc_N=30*'))
-                            + list(p.glob('mpc_N=40*')) + list(p.glob('mpc_N=49*')))    # find all folders with results
+    #result_folder_list = map(str, list(p.glob('mpc_N=5*')) + list(p.glob('mpc_N=10*')) + list(p.glob('mpc_N=20*')) + list(p.glob('mpc_N=30*'))
+    #                        + list(p.glob('mpc_N=40*')) + list(p.glob('mpc_N=49*')))    # find all folders with results
+    result_folder_list = map(str, list(p.glob('mpc_N=3_*')))
+    #result_folder_list = map(str, list(p.glob('mpc_N=5_*')) + list(p.glob('mpc_N=10*')) + list(p.glob('mpc_N=20_*'))
+    #                            + list(p.glob('mpc_N=30_*')) + list(p.glob('mpc_N=40_*')) + list(p.glob('mpc_N=50_*')))
     mpc_list = []
     # save results as objects
     for r in result_folder_list:
@@ -300,21 +320,31 @@ if __name__ == "__main__":
     ref_result_folder = map(str,list(p.glob('ref_*')))[0]
     ref_result = SimulationResult(ref_result_folder)
 
+    # uncontrolled
+    unc_folder = map(str, list(p.glob('unc_*')))[0]
+    unc_result = SimulationResult(unc_folder)
+
     # create turnpike plot
-    plot_turnpike(mpc_list, ref_result, output_file='figures/turnpike.pdf')
+    #plot_turnpike(mpc_list, ref_result, output_file='figures/turnpike.pdf')
+
 
     # create plot for convergence of mpc cost
-    plot_cost_convergence(mpc_list, output_file='figures/cost_convergence.pdf')
+    #mpc_list_ = filter(lambda x: x.N <= 30, mpc_list)
+    #plot_cost_convergence(mpc_list_, output_file='figures/cost_convergence.pdf')
 
     # create plot for convergence of mpc trajectories
-    plot_closed_loop_convergence(mpc_list, ref_result, output_file='figures/trajectory_convergence.pdf')
+    #plot_closed_loop_convergence(mpc_list, ref_result, output_file='figures/trajectory_convergence.pdf')
 
     # create plot for cumulative closed loop cost
-    plot_cumulative_closed_loop_cost(mpc_list, ref_result, output_file='figures/cumulative_cost.pdf')
+    #plot_cumulative_closed_loop_cost(mpc_list, ref_result, output_file='figures/cumulative_cost.pdf')
+
+    unc_result.plot_closed_loop('figures/uncontrolled.mp4', L=100)
 
     # create videos of mpc closed loop simulations
-    #for r in mpc_list:
-    #    r.plot_closed_loop(ref_result)
+    for r in mpc_list:
+        r.plot_closed_loop('figures/heat_N={}.mp4'.format(r.N), L=100, reference=ref_result)
+
+
 
     pass
 
