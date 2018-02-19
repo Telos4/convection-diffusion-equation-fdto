@@ -314,13 +314,13 @@ if __name__ == "__main__":
     exec_folder = 'cpp/cmake-build-debug/'  # folder with executable
     result_folder = 'open_loop_results/'              # folder where results are stored
 
-    sim = False
+    sim = True
     if sim == True:
         # generate results
         min_N = 40
         max_N = 40
         #Ns = range(min_N,max_N+1)
-        Ns = [20, 40]
+        Ns = [50]
         L = 50
         run_simulations(Ns, L, exec_folder, result_folder, prefix="mpc_")
 
