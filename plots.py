@@ -104,6 +104,29 @@ class SimulationResult:
                 plt.show()
                 writer.grab_frame()
 
+    def plot_open_loop(self,k=0,reference=None):
+        FFMpegWriter = manimation.writers['ffmpeg']
+        metadata = dict(title='open_loop_N='+str(self.N)+'_k='+str(k), artist='Matplotlib',
+                        comment='Movie support!')
+        writer = FFMpegWriter(fps=15, metadata=metadata)
+
+        domain = np.arange(0.0, 1.0, 1.0/self.n_y)
+        fig, ax = plt.subplots()
+        ax.hold(False)
+
+        with writer.saving(fig, "results/sim_N=" + str(self.N) + ".mp4", 100):
+            for i in range(0, self.L):
+                ax.plot(domain, self.y_cl[i])
+
+                if reference:
+                    ax.hold(True)
+                    ax.plot(domain, reference.y_ol[0][1+i])
+                    ax.hold(False)
+
+                ax.set_xlim([0.0, 1.0])
+                ax.set_ylim([-0.5, 0.5])
+                plt.show()
+                writer.grab_frame()
     def plot_closed_loop_cost(self):
         domain = np.arange(0.0, self.L)
         fig, ax = plt.subplots()
