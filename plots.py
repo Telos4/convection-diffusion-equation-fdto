@@ -138,29 +138,53 @@ class SimulationResult:
                 plt.show()
                 writer.grab_frame()
 
-    def plot_open_loop(self,k=0,reference=None):
+    def plot_open_loop(self,output_file,reference=None,k=0):
         FFMpegWriter = manimation.writers['ffmpeg']
         metadata = dict(title='open_loop_N='+str(self.N)+'_k='+str(k), artist='Matplotlib',
-                        comment='Movie support!')
+                    comment='Movie support!')
         writer = FFMpegWriter(fps=15, metadata=metadata)
 
-        domain = np.arange(0.0, 1.0, 1.0/self.n_y)
-        fig, ax = plt.subplots()
-        ax.hold(False)
+        plt.rc('text', usetex=True)
+        plt.rc('font', family='serif')
 
-        with writer.saving(fig, "results/sim_N=" + str(self.N) + ".mp4", 100):
-            for i in range(0, self.L):
-                ax.plot(domain, self.y_cl[i])
+        h = 1.0/(self.n_y - 1)
+        domain = np.arange(0.0, 1.0+h, h)
+        subdomain = np.arange(0.25, 0.75+h, h)
+        fig, ax = plt.subplots()
+        #ax.hold(False)
+
+        with writer.saving(fig, output_file, 100):
+            for i in range(0, self.N):
+                ax.plot(domain, self.y_ol[k][i], color='k', linewidth=linewidth_global, label='$y_{ol}$')
+
+                ax.hold(True)
+                # plot constraints
+                ax.plot(subdomain, lb_y * np.ones(subdomain.shape), color='r', linewidth=linewidth_global)
+                ax.plot(subdomain, ub_y * np.ones(subdomain.shape), color='r', linewidth=linewidth_global)
+
+                ax.plot([0.95, 1.0], [ub_u, ub_u], color='b', linewidth=linewidth_global)
+                ax.plot([0.95, 1.0], [lb_u, lb_u], color='b', linewidth=linewidth_global)
+
+                # plot text with time
+                ax.text(0.8, 0.4, 't = {:5.3f}'.format((i+1)*delta_t), bbox={'facecolor':'white', 'pad':10})
+                ax.hold(False)
 
                 if reference:
                     ax.hold(True)
-                    ax.plot(domain, reference.y_ol[0][1+i])
+                    ax.plot(domain, reference.y_ol[k][1+i], color='g', linewidth=linewidth_global, label='$y^*$')
                     ax.hold(False)
 
                 ax.set_xlim([0.0, 1.0])
                 ax.set_ylim([-0.5, 0.5])
+
+                ax.set(xlabel='$\Omega$', ylabel='$y$')
+                ax.xaxis.label.set_size(20)
+                ax.yaxis.label.set_size(20)
+
+                ax.legend(loc='upper left')
                 plt.show()
                 writer.grab_frame()
+
     def plot_closed_loop_cost(self):
         domain = np.arange(0.0, self.L)
         fig, ax = plt.subplots()
@@ -169,17 +193,17 @@ class SimulationResult:
         ax.plot(domain, self.closed_loop_cost)
         plt.show()
 
-    def plot_open_loop(self):
-        domain = np.arange(0.0, 1.0, 1.0/self.n_y)
-        fig, ax = plt.subplots()
-        ax.hold(False)
-
-        for i in range(0, self.N):
-            ax.plot(domain, self.y_ol[i])
-            ax.set_xlim([0.0, 1.0])
-            ax.set_ylim([-0.5, 0.5])
-            plt.show()
-        pass
+    # def plot_open_loop(self):
+    #     domain = np.arange(0.0, 1.0, 1.0/self.n_y)
+    #     fig, ax = plt.subplots()
+    #     ax.hold(False)
+    #
+    #     for i in range(0, self.N):
+    #         ax.plot(domain, self.y_ol[i])
+    #         ax.set_xlim([0.0, 1.0])
+    #         ax.set_ylim([-0.5, 0.5])
+    #         plt.show()
+    #     pass
 
 def plot_closed_loop_convergence(results, reference, output_file='test.pdf'):
     fig, ax = plt.subplots()
@@ -288,15 +312,17 @@ def run_simulations(Ns, L, exec_folder, result_folder, prefix="", ref=False):
 
 if __name__ == "__main__":
     exec_folder = 'cpp/cmake-build-debug/'  # folder with executable
-    result_folder = 'test_results/'              # folder where results are stored
+    result_folder = 'open_loop_results/'              # folder where results are stored
 
     sim = False
     if sim == True:
         # generate results
-        min_N = 50
-        max_N = 70
-        L = 250
-        run_simulations(range(min_N,max_N), L, exec_folder, result_folder, prefix="mpc_")
+        min_N = 40
+        max_N = 40
+        #Ns = range(min_N,max_N+1)
+        Ns = [20, 40]
+        L = 50
+        run_simulations(Ns, L, exec_folder, result_folder, prefix="mpc_")
 
         # reference solution (= open loop simulation with long horizon)
         run_simulations([max_N + L], 1, exec_folder, result_folder, prefix="ref_", ref=True)
@@ -308,7 +334,7 @@ if __name__ == "__main__":
     p = Path(result_folder)
     #result_folder_list = map(str, list(p.glob('mpc_N=5*')) + list(p.glob('mpc_N=10*')) + list(p.glob('mpc_N=20*')) + list(p.glob('mpc_N=30*'))
     #                        + list(p.glob('mpc_N=40*')) + list(p.glob('mpc_N=49*')))    # find all folders with results
-    result_folder_list = map(str, list(p.glob('mpc_N=3_*')))
+    result_folder_list = map(str, list(p.glob('mpc_N=*')))
     #result_folder_list = map(str, list(p.glob('mpc_N=5_*')) + list(p.glob('mpc_N=10*')) + list(p.glob('mpc_N=20_*'))
     #                            + list(p.glob('mpc_N=30_*')) + list(p.glob('mpc_N=40_*')) + list(p.glob('mpc_N=50_*')))
     mpc_list = []
@@ -321,8 +347,8 @@ if __name__ == "__main__":
     ref_result = SimulationResult(ref_result_folder)
 
     # uncontrolled
-    unc_folder = map(str, list(p.glob('unc_*')))[0]
-    unc_result = SimulationResult(unc_folder)
+    #unc_folder = map(str, list(p.glob('unc_*')))[0]
+    #unc_result = SimulationResult(unc_folder)
 
     # create turnpike plot
     #plot_turnpike(mpc_list, ref_result, output_file='figures/turnpike.pdf')
@@ -338,12 +364,12 @@ if __name__ == "__main__":
     # create plot for cumulative closed loop cost
     #plot_cumulative_closed_loop_cost(mpc_list, ref_result, output_file='figures/cumulative_cost.pdf')
 
-    unc_result.plot_closed_loop('figures/uncontrolled.mp4', L=100)
+    #unc_result.plot_closed_loop('figures/uncontrolled.mp4', L=100)
 
     # create videos of mpc closed loop simulations
     for r in mpc_list:
-        r.plot_closed_loop('figures/heat_N={}.mp4'.format(r.N), L=100, reference=ref_result)
-
+        #r.plot_closed_loop('figures/heat_N={}.mp4'.format(r.N), L=100, reference=ref_result)
+        r.plot_open_loop('figures/ol_heat_N={}.mp4'.format(r.N), k=0, reference=ref_result)
 
 
     pass
