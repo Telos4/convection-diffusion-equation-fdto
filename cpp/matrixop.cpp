@@ -67,6 +67,7 @@ MATRIXOP::MATRIXOP(int N_, string file_A, string file_B_y, string file_B_w, stri
     iter = 0;
     closed_loop_cost = 0;
 
+    //assuming an n x n grid in heat2d.py, not used in 1d case 
     discretization_n = (int) sqrt(n_y) - 1;
 
     closed_values = closed_values_;
@@ -100,7 +101,7 @@ MATRIXOP::MATRIXOP(int N_, string file_A, string file_B_y, string file_B_w, stri
     }
 
 
-
+    //create folder in which the result folders will be created
     if (closed_values || open_values) {
 	result_folder = result_folder_;
 	create_folder(result_folder_prefix_);
@@ -203,10 +204,8 @@ void MATRIXOP::create_folder(string result_folder_prefix) {
     }
 }
 
-
-//todo insert matrices Q, R, ...  y_ref, u_ref as vector?
-
 double MATRIXOP::eval_f(valarray<double> &x) {
+    //Q, R, W unit matrices
     double re = 0;
 
     //sum over yQy
@@ -254,9 +253,8 @@ double MATRIXOP::vec_W_vec(valarray<double> y) {
     return re;
 }
 
-//Q, R schwach besetzt?, dann später zu schreibende matrix vektor multiplikation nutzen
-
 valarray<double> MATRIXOP::eval_grad_f(valarray<double> z) {
+    //Q, R, W unit matrices for now
     valarray<double> re(n_z);
 
     for (int i = 0; i < N + 1; ++i) {
@@ -307,6 +305,7 @@ valarray<double> MATRIXOP::W_vec(valarray<double> w) {
 //parameters have size (data.B_rows.size() + data.A_rows.size() + data.b_u.size()) * data.N
 
 void MATRIXOP::A_eq() {
+    //create A_eq column by column
     long size_A_eq = (B_y_rows.size() + A_rows.size() + b_u.size()) * N;
     long size_B = B_y_rows.size();
     long size_A = A_rows.size();
@@ -345,7 +344,11 @@ void MATRIXOP::A_eq() {
 }
 
 void MATRIXOP::initialize_order() {
-
+    //assumption: we have a n x n grid
+    //in dof_x and dof_y we have the x and y coordinates of every degree of freedom (the state variables) of the unit square mesh from the pde. (not ordered)
+    //to be able to have a ordered output of our state we need to know the position every state variable should be written to
+    //order is given by (n+1)*y+x, because n is the number of degrees of freedom per column minus one
+    //discretization_n * dof_x[i] is the same as dividing by the grid width, returns the x-position as integer
     order.resize(n_y);
     for (int i = 0; i < n_y; ++i) {
 	order[i] = (int) (discretization_n * dof_x[i] + discretization_n * (discretization_n + 1) * dof_y[i]);

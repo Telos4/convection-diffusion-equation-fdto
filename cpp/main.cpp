@@ -18,8 +18,9 @@ using namespace Ipopt;
 
 int optimize(int steps, MATRIXOP & data, int outputlevel);
 void closed_cost_vs_horizon_length(int max_MPC_horizon, int steps, string matrix_A, string matrix_B_y,
-	string matrix_B_w, string vec_b_u, string vec_b_y_out, string dof_x, string dof_y, string pythonparam, double eps, double y_ref,
-	double u_ref, double u_upper, double u_lower, double y_upper, double y_lower, double w_upper, double w_lower, bool dim2, bool convection, int outputlevel);
+	string matrix_B_w, string vec_b_u, string vec_b_y_out, string dof_x, string dof_y, string pythonparam,
+	double eps, double y_ref, double u_ref, double u_upper, double u_lower, double y_upper, double y_lower,
+	double w_upper, double w_lower, bool dim2, bool convection, int outputlevel);
 //void solver_test(MATRIXOP &data, int steps);
 void write_parameters(int MPC_horizon, int steps, string matrix_A, string matrix_B_y, string matrix_B_w, string vec_b_u,
 	string vec_b_y_out, string dof_x, string dof_y, string pythonparam_, double eps, double y_ref, double u_ref,
@@ -52,10 +53,9 @@ int main(int argc, char** argv) {
     string vec_b_y_out = "../b_y_out.txt";
     string dof_x = "../dof_x.txt";
     string dof_y = "../dof_y.txt";
-    string result_folder = "../results";
+    string result_folder = "../results/";
     string result_folder_prefix = "";
     string pythonparam = "../python_parameters.txt";
-
 
     int steps = 1;
     int MPC_horizon = 100;
@@ -194,11 +194,11 @@ int main(int argc, char** argv) {
 
     //start program
     if (cost_vs_horizon) {
-	closed_cost_vs_horizon_length(MPC_horizon, steps, matrix_A, matrix_B_y, matrix_B_w, vec_b_u, vec_b_y_out, dof_x, dof_y, pythonparam, eps, y_ref, u_ref, u_upper, u_lower, y_upper, y_lower, w_upper, w_lower, 
+	closed_cost_vs_horizon_length(MPC_horizon, steps, matrix_A, matrix_B_y, matrix_B_w, vec_b_u, vec_b_y_out, dof_x, dof_y, pythonparam, eps, y_ref, u_ref, u_upper, u_lower, y_upper, y_lower, w_upper, w_lower,
 		dim2, convection, outputlevel);
     }
     else {
-	MATRIXOP data(MPC_horizon, matrix_A, matrix_B_y, matrix_B_w, vec_b_u, vec_b_y_out, dof_x, dof_y, eps, y_ref, u_ref, u_upper, u_lower, y_upper, y_lower, w_upper, w_lower, 
+	MATRIXOP data(MPC_horizon, matrix_A, matrix_B_y, matrix_B_w, vec_b_u, vec_b_y_out, dof_x, dof_y, eps, y_ref, u_ref, u_upper, u_lower, y_upper, y_lower, w_upper, w_lower,
 		dim2, convection, closed_values, open_values, free_init_value, result_folder, result_folder_prefix);
 	int status = optimize(steps, data, outputlevel);
 
@@ -246,7 +246,7 @@ int optimize(int steps, MATRIXOP & data, int outputlevel) {
 	    app->Options()->SetStringValue("jac_d_constant", "no");
 
 	    //approximation of the hessian of the lagranage function by only using the hessian of the objective function
-	    //error of ~10e-3
+	    //error in u and w of ~10e-3
 	    app->Options()->SetStringValue("hessian_constant", "yes");
 	    //app->Options()->SetStringValue("hessian_approximation", "limited-memory");
 	}
@@ -271,6 +271,7 @@ int optimize(int steps, MATRIXOP & data, int outputlevel) {
 	    return (int) status;
 	}
 
+	//0 if successful
 	last_status = (int) status;
     }
     return last_status;
@@ -278,12 +279,16 @@ int optimize(int steps, MATRIXOP & data, int outputlevel) {
 
 void closed_cost_vs_horizon_length(int max_MPC_horizon, int steps, string matrix_A, string matrix_B_y,
 	string matrix_B_w, string vec_b_u, string vec_b_y_out, string dof_x, string dof_y, string pythonparam,
-	double eps, double y_ref, double u_ref, double u_upper, double u_lower, double y_upper, double w_upper, double w_lower, double y_lower, bool dim2, bool convection, int outputlevel) {
+	double eps, double y_ref, double u_ref, double u_upper, double u_lower, double y_upper, double y_lower, double w_upper, double w_lower, bool dim2, bool convection, int outputlevel) {
+
     int status;
+
     bool closed_values = false;
     bool open_values = false;
     bool free_init_value = false;
+
     valarray<double> costs(0.0, max_MPC_horizon);
+
     string foldername;
     string result_folder = "../results";
     string result_folder_prefix = "";
@@ -293,7 +298,6 @@ void closed_cost_vs_horizon_length(int max_MPC_horizon, int steps, string matrix
     for (int i = 1; i < max_MPC_horizon; ++i) {
 	MATRIXOP data(i, matrix_A, matrix_B_y, matrix_B_w, vec_b_u, vec_b_y_out, dof_x, dof_y, eps, y_ref, u_ref, u_upper, u_lower, y_upper, y_lower, w_upper, w_lower, dim2,
 		convection, closed_values, open_values, free_init_value, result_folder, result_folder_prefix);
-
 	if (i == 1) {
 	    data.create_folder("");
 	    foldername = data.foldername;
