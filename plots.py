@@ -361,7 +361,7 @@ def run_simulations(Ns, L, exec_folder, result_folder, prefix="", ref=False):
 
 if __name__ == "__main__":
     exec_folder = 'cpp/cmake-build-debug/'  # folder with executable
-    result_folder = 'open_loop_results/'              # folder where results are stored
+    result_folder = 'results/'              # folder where results are stored
 
     sim = False
     if sim == True:
@@ -369,12 +369,15 @@ if __name__ == "__main__":
         min_N = 40
         max_N = 40
         #Ns = range(min_N,max_N+1)
-        Ns = [50]
-        L = 50
+        Ns = [10, 20, 30, 40]
+        L = 75
         run_simulations(Ns, L, exec_folder, result_folder, prefix="mpc_")
 
         # reference solution (= open loop simulation with long horizon)
         run_simulations([max_N + L], 1, exec_folder, result_folder, prefix="ref_", ref=True)
+
+        # overtaking solution (= open loop simulation with long horizon)
+        run_simulations([max_N + L], 1, exec_folder, result_folder, prefix="opt_")
 
     #run_simulations([1], 250, exec_folder, result_folder, prefix="unc_")
 
@@ -395,6 +398,10 @@ if __name__ == "__main__":
     # reference trajectory
     ref_result_folder = map(str,list(p.glob('ref_*')))[0]
     ref_result = SimulationResult(ref_result_folder)
+
+    # overtaking optimal trajectory
+    opt_result_folder = map(str, list(p.glob('opt_*')))[0]
+    opt_result = SimulationResult(opt_result_folder)
 
     # uncontrolled
     #unc_folder = map(str, list(p.glob('unc_*')))[0]
@@ -418,8 +425,8 @@ if __name__ == "__main__":
 
     # create videos of mpc closed loop simulations
     for r in mpc_list:
-        #r.plot_closed_loop('figures/heat_N={}.mp4'.format(r.N), L=100, reference=ref_result)
-        r.plot_open_loop('figures/ol_heat_N={}.mp4'.format(r.N), k=0, reference=ref_result)
+        r.plot_closed_loop('figures/heat_N={}.mp4'.format(r.N), L=100, reference=opt_result)
+        #r.plot_open_loop('figures/ol_heat_N={}.mp4'.format(r.N), k=0, reference=ref_result)
 
 
     pass
