@@ -92,6 +92,8 @@ class SimulationResult:
     def plot_closed_loop(self, output_file, reference=None, L=None):
         if L is None:
             L = self.L
+        else:
+            L = min(L, self.L)
         FFMpegWriter = manimation.writers['ffmpeg']
         metadata = dict(title='closed_loop_N='+str(self.N), artist='Matplotlib',
                     comment='Movie support!')
@@ -108,7 +110,31 @@ class SimulationResult:
 
         with writer.saving(fig, output_file, 100):
             for i in range(0, L):
-                ax.plot(domain, self.y_cl[i], color='k', linewidth=linewidth_global, label='$y_{\mu_{' + str(self.N) + '}}$')
+                ax.plot(domain, self.y_cl[i], color='k', linewidth=linewidth_global, label='$y\;(N=' + str(self.N) + ')$')
+
+                subdivisions = 20
+                for j in range(0, subdivisions):
+                    k = (self.n_y-1)/subdivisions * j
+                    k1 = (self.n_y-1)/subdivisions * (j+1)
+                    lx = (self.n_y-1)/subdivisions * h
+                    ly = self.y_cl[i][k1] - self.y_cl[i][k]
+                    if self.w_cl[i] <= 0.0:
+                        px1 = h * k
+                        py1 = self.y_cl[i][k]
+                        px2 = lx
+                        py2 = ly
+                    else:
+                        px1 = h * k1
+                        py1 = self.y_cl[i][k1]
+                        px2 = -lx
+                        py2 = -ly
+                    head_width = ly * min(self.w_cl[i], 0.5) * 5
+                    head_length = lx/2 * min(self.w_cl[i], 0.5) * 5
+                    overhang = 0.9
+                    head_lr = False
+
+                    ax.arrow(px1, py1, px2, py2, head_width=head_width, head_length=head_length, fc='k',
+                             ec='b', overhang=overhang, length_includes_head=True, head_starts_at_zero=head_lr)
 
                 ax.hold(True)
                 # plot constraints
@@ -119,12 +145,12 @@ class SimulationResult:
                 ax.plot([0.95, 1.0], [lb_u, lb_u], color='b', linewidth=linewidth_global)
 
                 # plot text with time
-                ax.text(0.8, 0.4, 't = {:5.3f}'.format((i+1)*delta_t), bbox={'facecolor':'white', 'pad':10})
+                ax.text(0.8, 0.4, 't = {:5.3f}'.format((i)*delta_t), bbox={'facecolor':'white', 'pad':10})
                 ax.hold(False)
 
                 if reference:
                     ax.hold(True)
-                    ax.plot(domain, reference.y_ol[0][1+i], color='g', linewidth=linewidth_global, label='$y^*$')
+                    ax.plot(domain, reference.y_ol[0][i], color='g', linewidth=linewidth_global, label='$y^*$')
                     ax.hold(False)
 
                 ax.set_xlim([0.0, 1.0])
@@ -151,11 +177,34 @@ class SimulationResult:
         domain = np.arange(0.0, 1.0+h, h)
         subdomain = np.arange(0.25, 0.75+h, h)
         fig, ax = plt.subplots()
-        #ax.hold(False)
 
         with writer.saving(fig, output_file, 100):
             for i in range(0, self.N):
-                ax.plot(domain, self.y_ol[k][i], color='k', linewidth=linewidth_global, label='$y_{ol}$')
+                ax.plot(domain, self.y_ol[k][i], color='k', linewidth=linewidth_global, label='$y_{ol} \; (N=' + str(self.N) +')$')
+
+                subdivisions = 20
+                for j in range(0, subdivisions):
+                    g = (self.n_y - 1) / subdivisions * j
+                    g1 = (self.n_y - 1) / subdivisions * (j + 1)
+                    lx = (self.n_y - 1) / subdivisions * h
+                    ly = self.y_ol[k][i][g1] - self.y_ol[k][i][g]
+                    if self.w_ol[k][i] <= 0.0:
+                        px1 = h * g
+                        py1 = self.y_ol[k][i][g]
+                        px2 = lx
+                        py2 = ly
+                    else:
+                        px1 = h * g1
+                        py1 = self.y_ol[k][i][g1]
+                        px2 = -lx
+                        py2 = -ly
+                    head_width = ly * min(self.w_ol[k][i], 0.5) * 5
+                    head_length = lx / 2 * min(self.w_ol[k][i], 0.5) * 5
+                    overhang = 0.9
+                    head_lr = False
+
+                    ax.arrow(px1, py1, px2, py2, head_width=head_width, head_length=head_length, fc='k',
+                             ec='b', overhang=overhang, length_includes_head=True, head_starts_at_zero=head_lr)
 
                 ax.hold(True)
                 # plot constraints
@@ -215,7 +264,7 @@ def plot_closed_loop_convergence(results, reference, output_file='test.pdf'):
 
         norm_diffs = []
         for j in range(0,r.L):
-            norm_diffs.append(np.linalg.norm(y[j] - y_ref[1+j]))
+            norm_diffs.append(np.linalg.norm(y[j] - y_ref[j]))
 
         domain = np.arange(0, 0+r.L)
         ax.plot(domain, norm_diffs, label='N='+str(r.N), linewidth=linewidth_global)
@@ -314,7 +363,7 @@ if __name__ == "__main__":
     exec_folder = 'cpp/cmake-build-debug/'  # folder with executable
     result_folder = 'open_loop_results/'              # folder where results are stored
 
-    sim = True
+    sim = False
     if sim == True:
         # generate results
         min_N = 40
@@ -341,6 +390,7 @@ if __name__ == "__main__":
     # save results as objects
     for r in result_folder_list:
         mpc_list.append(SimulationResult(r))
+    mpc_list = sorted(mpc_list, key=lambda r: r.N)  # sort by horizon length
 
     # reference trajectory
     ref_result_folder = map(str,list(p.glob('ref_*')))[0]
