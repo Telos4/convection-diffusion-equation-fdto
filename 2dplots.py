@@ -145,9 +145,9 @@ class SimulationResult:
                 ax.zaxis.label.set_size(20)
 
                 # Add a color bar which maps values to colors.
-                ax.hold(True)
+                #ax.hold(True)
                 #fig.colorbar(surf, shrink=0.5, aspect=5)
-                ax.hold(False)
+                #ax.hold(False)
                 #plt.show()
                 writer.grab_frame()
                 plt.cla()
@@ -202,15 +202,15 @@ def run_simulations(Ns, L, exec_folder, result_folder, prefix="", ref=False):
 
 if __name__ == "__main__":
     exec_folder = 'cpp/'  # folder with executable
-    result_folder = 'results/'              # folder where results are stored
+    result_folder = 'results2/'              # folder where results are stored
 
-    sim = False
+    sim = True
     if sim == True:
         # generate results
         min_N = 40
         max_N = 40
         #Ns = range(min_N,max_N+1)
-        Ns = [3]
+        Ns = [5,10,50]
         L = 100
         run_simulations(Ns, L, exec_folder, result_folder, prefix="mpc_")
 
