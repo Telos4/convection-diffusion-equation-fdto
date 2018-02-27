@@ -189,7 +189,7 @@ void MATRIXOP::create_folder(string result_folder_prefix) {
 
     //create results folder first, cant create subdirectories directly?
     try {
-	boost::filesystem::create_directory("../results");
+	boost::filesystem::create_directory(result_folder);
     }
     catch (boost::filesystem::filesystem_error &e) {
 	std::cerr << e.what() << '\n';
