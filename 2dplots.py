@@ -111,24 +111,23 @@ class SimulationResult:
         fig = plt.figure()
         ax = fig.gca(projection='3d')
         #ax.azim = 90
-        #yax.elev = 0
+        #ax.elev = 0
 
         h = 1./(self.n_disc - 1)
         # Make data.
-        X = np.arange(0, 1+h, h)
-        Y = np.arange(0, 1+h, h)
+        X = np.arange(0, 1+0.5*h, h)
+        Y = np.arange(0, 1+0.5*h, h)
         X, Y = np.meshgrid(X, Y)
 
 
         with writer.saving(fig, output_file, 100):
             for i in range(0, L):
                 Z = np.reshape(self.y_cl[i], (self.n_disc, self.n_disc))
-
                 #print(Z)
                 #print(X)
                 # Plot the surface.
                 #ax.hold(False)
-                #surf = ax.plot_surface(X, Y, Z, cmap=cm.coolwarm, vmin = -0.25, vmax = 0.25,
+                #surf = ax.plot_surface(X, Y, Z, cmap=cm.coolwarm,
                 #                       linewidth=0.0, antialiased=False)
                 surf = ax.plot_wireframe(X, Y, Z)
                 # Customize the z axis.
@@ -192,25 +191,25 @@ def run_simulations(Ns, L, exec_folder, result_folder, prefix="", ref=False):
         if ref:
             call([exec_folder + "heateq_opt", "-c", "-d", "-L " + str(L), "-N" + str(N), "--ov", "--cv", "--matA=A.mtx", "--matB_w=B_w.mtx",
                   "--matB_y=B_y.mtx", "--b_u=b_u.txt", "--b_y_out=b_y_out.txt", "--result_folder=" + result_folder,
-                  "--result_folder_prefix=" + folder_prefix, "--fi", "--pythonparam=python_parameters.txt", "--dof_x=dof_x.txt", "--dof_y=dof_y.txt", "--output=5"])
+                  "--result_folder_prefix=" + folder_prefix, "--fi", "--pythonparam=python_parameters.txt", "--dof_x=dof_x.txt", "--dof_y=dof_y.txt", "--output=0"])
         else:
             call([exec_folder + "heateq_opt", "-c", "-d", "-L " + str(L), "-N" + str(N), "--ov", "--cv", "--matA=A.mtx", "--matB_w=B_w.mtx",
                   "--matB_y=B_y.mtx", "--b_u=b_u.txt", "--b_y_out=b_y_out.txt", "--result_folder=" + result_folder,
-                  "--result_folder_prefix=" + folder_prefix, "--pythonparam=python_parameters.txt", "--dof_x=dof_x.txt", "--dof_y=dof_y.txt"])
+                  "--result_folder_prefix=" + folder_prefix, "--pythonparam=python_parameters.txt", "--dof_x=dof_x.txt", "--dof_y=dof_y.txt", "--output=0"])
 
 
 
 if __name__ == "__main__":
     exec_folder = 'cpp/'  # folder with executable
-    result_folder = 'results/'              # folder where results are stored
+    result_folder = 'results3/'              # folder where results are stored
 
-    sim = False
+    sim = True
     if sim == True:
         # generate results
         min_N = 40
         max_N = 40
         #Ns = range(min_N,max_N+1)
-        Ns = [3]
+        Ns = [5]
         L = 100
         run_simulations(Ns, L, exec_folder, result_folder, prefix="mpc_")
 
@@ -234,8 +233,8 @@ if __name__ == "__main__":
     mpc_list = sorted(mpc_list, key=lambda r: r.N)  # sort by horizon length
 
     # reference trajectory
-    ref_result_folder = map(str,list(p.glob('ref_*')))[0]
-    ref_result = SimulationResult(ref_result_folder)
+    #ref_result_folder = map(str,list(p.glob('ref_*')))[0]
+    #ref_result = SimulationResult(ref_result_folder)
 
     # uncontrolled
     #unc_folder = map(str, list(p.glob('unc_*')))[0]
