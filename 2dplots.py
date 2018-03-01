@@ -144,9 +144,9 @@ class SimulationResult:
                 ax.zaxis.label.set_size(20)
 
                 # Add a color bar which maps values to colors.
-                ax.hold(True)
+                #ax.hold(True)
                 #fig.colorbar(surf, shrink=0.5, aspect=5)
-                ax.hold(False)
+                #ax.hold(False)
                 #plt.show()
                 writer.grab_frame()
                 plt.cla()
