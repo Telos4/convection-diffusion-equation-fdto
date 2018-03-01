@@ -190,18 +190,18 @@ def run_simulations(Ns, L, exec_folder, result_folder, prefix="", ref=False):
     for N in Ns:
         folder_prefix = prefix + "N=" + str(N) + "_L=" + str(L) + "_"
         if ref:
-            call([exec_folder + "heateq_opt", "-c", "-d", "-L " + str(L), "-N" + str(N), "--ov", "--cv", "--matA=A.mtx", "--matB_w=B_w.mtx",
+            call([exec_folder + "heat", "-c", "-d", "-L " + str(L), "-N" + str(N), "--ov", "--cv", "--matA=A.mtx", "--matB_w=B_w.mtx",
                   "--matB_y=B_y.mtx", "--b_u=b_u.txt", "--b_y_out=b_y_out.txt", "--result_folder=" + result_folder,
                   "--result_folder_prefix=" + folder_prefix, "--fi", "--pythonparam=python_parameters.txt", "--dof_x=dof_x.txt", "--dof_y=dof_y.txt", "--output=5"])
         else:
-            call([exec_folder + "heateq_opt", "-c", "-d", "-L " + str(L), "-N" + str(N), "--ov", "--cv", "--matA=A.mtx", "--matB_w=B_w.mtx",
+            call([exec_folder + "heat", "-c", "-d", "-L " + str(L), "-N" + str(N), "--ov", "--cv", "--matA=A.mtx", "--matB_w=B_w.mtx",
                   "--matB_y=B_y.mtx", "--b_u=b_u.txt", "--b_y_out=b_y_out.txt", "--result_folder=" + result_folder,
                   "--result_folder_prefix=" + folder_prefix, "--pythonparam=python_parameters.txt", "--dof_x=dof_x.txt", "--dof_y=dof_y.txt"])
 
 
 
 if __name__ == "__main__":
-    exec_folder = 'cpp/'  # folder with executable
+    exec_folder = 'cpp/cmake-build-debug/'  # folder with executable
     result_folder = 'results2/'              # folder where results are stored
 
     sim = True
@@ -210,7 +210,7 @@ if __name__ == "__main__":
         min_N = 40
         max_N = 40
         #Ns = range(min_N,max_N+1)
-        Ns = [5,10,50]
+        Ns = [10, 50]
         L = 100
         run_simulations(Ns, L, exec_folder, result_folder, prefix="mpc_")
 

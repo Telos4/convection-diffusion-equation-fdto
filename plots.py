@@ -355,7 +355,9 @@ def run_simulations(Ns, L, exec_folder, result_folder, prefix="", ref=False):
         else:
             call([exec_folder + "heat", "-c", "-L " + str(L), "-N" + str(N), "--ov", "--cv", "--matA=A.mtx", "--matB_w=B_w.mtx",
                   "--matB_y=B_y.mtx", "--b_u=b_u.txt", "--b_y_out=b_y_out.txt", "--result_folder=" + result_folder,
-                  "--result_folder_prefix=" + folder_prefix])
+                  "--result_folder_prefix=" + folder_prefix,
+                  "--y_lower=-1.0", "--y_upper=1.0",
+                  "--pythonparam=python_parameters.txt"])
 
 
 
@@ -363,14 +365,14 @@ if __name__ == "__main__":
     exec_folder = 'cpp/cmake-build-debug/'  # folder with executable
     result_folder = 'results/'              # folder where results are stored
 
-    sim = False
+    sim = True
     if sim == True:
         # generate results
         min_N = 40
         max_N = 40
         #Ns = range(min_N,max_N+1)
-        Ns = [10, 20, 30, 40]
-        L = 75
+        Ns = [5]
+        L = 50
         run_simulations(Ns, L, exec_folder, result_folder, prefix="mpc_")
 
         # reference solution (= open loop simulation with long horizon)
