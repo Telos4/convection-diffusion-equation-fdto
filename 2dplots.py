@@ -119,17 +119,51 @@ class SimulationResult:
         Y = np.arange(0, 1+0.5*h, h)
         X, Y = np.meshgrid(X, Y)
 
+        distance_of_arrows =  5
+        Xa = np.arange(0, 1+0.5*h, distance_of_arrows * h)
+        Ya = np.arange(0, 1+0.5*h, distance_of_arrows * h)
+        Xa, Ya = np.meshgrid(Xa, Ya)
 
         with writer.saving(fig, output_file, 100):
             for i in range(0, L):
                 Z = np.reshape(self.y_cl[i], (self.n_disc, self.n_disc))
+                Za = np.zeros((len(Xa), len(Ya)))
+                for j in range(0, len(Xa)):
+                    for k in range(0, len(Ya)):
+                        Za[j][k] = Z[distance_of_arrows * j][distance_of_arrows * k]
+
+                Za_left = np.zeros((len(Xa), len(Ya)))
+                for j in range(0, len(Xa)):
+                    for k in range(0, len(Ya)):
+                        if k == 0:
+                            Za_left[j][k] = Z[distance_of_arrows * j][distance_of_arrows * k]
+                        else:
+                            Za_left[j][k] = Z[distance_of_arrows * j][distance_of_arrows * k - 1]
+
+                Za_right = np.zeros((len(Xa), len(Ya)))
+                for j in range(0, len(Xa)):
+                    for k in range(0, len(Ya)):
+                        if distance_of_arrows * k >= len(X) - 1:
+                            Za_right[j][k] = Z[distance_of_arrows * j][distance_of_arrows * k]
+                        else:
+                            Za_right[j][k] = Z[distance_of_arrows * j][distance_of_arrows * k + 1]
+                #print(Za)
+
                 #print(Z)
                 #print(X)
                 # Plot the surface.
                 #ax.hold(False)
-                #surf = ax.plot_surface(X, Y, Z, cmap=cm.coolwarm,
-                #                       linewidth=0.0, antialiased=False)
-                surf = ax.plot_wireframe(X, Y, Z)
+                surf = ax.plot_surface(X, Y, Z, cmap=cm.coolwarm, vmin = -0.3, vmax = 0.3, linewidth=0.0, antialiased=False, alpha = 0.2)
+                #surf = ax.plot_wireframe(X, Y, Z)
+
+                #save difference between Za and Za shifted left/right for z-component of vector, y=0, x depends on sign of w (either +h or -h), multiply x,z by w for length
+                factor = 100
+                if self.w_cl[i] >= 0:
+                    ax.quiver(Xa, Ya, Za, -h * self.w_cl[i] * factor, 0, (Za_left - Za) * self.w_cl[i] * factor)
+                else:
+                    ax.quiver(Xa, Ya, Za, -h * self.w_cl[i] * factor, 0, (Za_right - Za) * self.w_cl[i] * factor)
+
+
                 # Customize the z axis.
                 ax.set_xlim([0.0, 1.0])
                 ax.set_ylim([0.0, 1.0])
@@ -144,9 +178,8 @@ class SimulationResult:
                 ax.zaxis.label.set_size(20)
 
                 # Add a color bar which maps values to colors.
-                #ax.hold(True)
-                #fig.colorbar(surf, shrink=0.5, aspect=5)
-                #ax.hold(False)
+                #if(i == 0):
+                    #fig.colorbar(surf, shrink=0.5, aspect=5)
                 #plt.show()
                 writer.grab_frame()
                 plt.cla()
@@ -203,7 +236,7 @@ if __name__ == "__main__":
     exec_folder = 'cpp/'  # folder with executable
     result_folder = 'results3/'              # folder where results are stored
 
-    sim = True
+    sim = False
     if sim == True:
         # generate results
         min_N = 40

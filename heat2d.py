@@ -114,8 +114,8 @@ def output_matrices():
     dof_file_y.write(str(len(dofs)) + "\n")
 
     for val in dofs:
-        dof_file_x.write(str(int(val[0])) + "\n")
-        dof_file_y.write(str(int(val[1])) + "\n")
+        dof_file_x.write(str(int(round(val[0]))) + "\n")
+        dof_file_y.write(str(int(round(val[1]))) + "\n")
     dof_file_x.close
     dof_file_y.close
 
