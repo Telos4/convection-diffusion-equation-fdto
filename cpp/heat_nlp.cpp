@@ -75,10 +75,10 @@ bool HEAT_NLP::get_bounds_info(Index n, Number* x_l, Number* x_u,
     //state constraints in 2d
     if (data.dim2) {
 
-	double left = 0.3;
-	double right = 0.7;
-	double top = 0.7;
-	double bot = 0.3;
+	double left = data.boundary_left;
+	double right = data.boundary_right;
+	double top = data.boundary_top;
+	double bot = data.boundary_bot;
 
 
 	for (int k = 1; k < data.N + 1; ++k) {

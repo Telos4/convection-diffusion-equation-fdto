@@ -27,6 +27,7 @@ public:
     MATRIXOP();
     MATRIXOP(int N_, string file_A, string file_B_y, string file_B_w, string file_b_u, string file_b_y,
             string file_dof_x, string file_dof_y, double eps_, double y_ref_, double u_ref_, double u_upper_, double u_lower_, double y_upper_, double y_lower_, double w_upper_, double w_lower_, 
+            double boundary_right, double boundary_left, double boundary_top, double boundary_bot, 
             bool dim2, bool convection, bool closed_values, bool open_values, bool free_init_value, string result_folder, string result_folder_name);
 
 
@@ -62,7 +63,7 @@ public:
     valarray<int> A_rows, A_cols, B_y_rows, B_y_cols, A_eq_rows, A_eq_cols, B_w_rows, B_w_cols, order;
     valarray<double> A_vals, B_y_vals, A_eq_vals, B_w_vals, b_u, b_y, y_old, u_old, w_old, dof_x, dof_y;
     int n_y, n_u, n_w, n_z, N, iter, discretization_n;
-    double eps, y_ref, u_ref, closed_loop_cost, u_upper, u_lower, y_upper, y_lower, w_upper, w_lower;
+    double eps, y_ref, u_ref, closed_loop_cost, u_upper, u_lower, y_upper, y_lower, w_upper, w_lower, boundary_right, boundary_left, boundary_top, boundary_bot;
 
     bool dim2, convection, closed_values, open_values, free_init_value;
     string foldername; // folder where results shall be stored

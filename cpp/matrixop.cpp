@@ -15,9 +15,9 @@ MATRIXOP::MATRIXOP() {
 }
 
 MATRIXOP::MATRIXOP(int N_, string file_A, string file_B_y, string file_B_w, string file_b_u, string file_b_y,
-	string file_dof_x, string file_dof_y, double eps_, double y_ref_, double u_ref_, double u_upper_, double u_lower_, double y_upper_, double y_lower_, double w_upper_, double w_lower_, bool dim2_,
-	bool convection_, bool closed_values_, bool open_values_, bool free_init_value_, string result_folder_,
-	string result_folder_prefix_) {
+	string file_dof_x, string file_dof_y, double eps_, double y_ref_, double u_ref_, double u_upper_, double u_lower_, double y_upper_, double y_lower_, double w_upper_, double w_lower_,
+	double boundary_right_, double boundary_left_, double boundary_top_, double boundary_bot_,
+	bool dim2_, bool convection_, bool closed_values_, bool open_values_, bool free_init_value_, string result_folder_, string result_folder_prefix_) {
 
     dim2 = dim2_;
     convection = convection_;
@@ -62,7 +62,10 @@ MATRIXOP::MATRIXOP(int N_, string file_A, string file_B_y, string file_B_w, stri
     u_lower = u_lower_;
     y_upper = y_upper_;
     y_lower = y_lower_;
-
+    boundary_right = boundary_right_;
+    boundary_left = boundary_left_;
+    boundary_top = boundary_top_;
+    boundary_bot = boundary_bot_;
 
     iter = 0;
     closed_loop_cost = 0;
