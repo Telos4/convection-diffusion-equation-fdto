@@ -180,7 +180,7 @@ scipy.io.savemat('sys.mat', {'A': A.array(), 'B_y': B_y.array(), 'B_w': B_w.arra
 Our goal is to solve the following problem:
 \begin{align*}
 \min_{y,u, w} J(y, u, w) = & \frac{\varepsilon}{2}\int_{\Omega} (y(x, T) - y_{\Omega}(T,x))^2 \; dx + \frac{\varepsilon}{2} \int_{0}^{T} \int_{\Omega} (y(x,t) - y_{\Omega}(t,x))^2 \; dx \; dt \\
-& + \frac{1}{2} \int_{0}^{T} \int_{\Gamma_c} (u(x,t) - u_ref(x,t))^2 \; ds \; dt + \frac{1}{2} \int_{0}^{T} w(t)^2 \; dt \\
+& + \frac{1}{2} \int_{0}^{T} \int_{\Gamma_c} (u(x,t) - u_{ref}(x,t))^2 \; ds \; dt + \frac{1}{2} \int_{0}^{T} w(t)^2 \; dt \\
 \text{s.t.} & \eqref{eq:pde}, \eqref{eq:robin-bc} \\
 & \underline{u}(x,t) \leq u(x,t) \leq \overline{u}(x,t) \\
 & \underline{y}(x,t) \leq y(x,t) \leq \overline{y}(x,t) \text{ on } \Omega_y

@@ -1,11 +1,12 @@
-cmake_minimum_required(VERSION 3.9)
+cmake_minimum_required(VERSION 3.8)
 project(heat)
 
 set(CMAKE_CXX_STANDARD 11)
 
-include_directories(/opt/ipopt/include/coin)    # Ipopt header files are here
+include_directories(/opt/ipopt/include/coin # Ipopt header files are here
+                    /opt/OpenBLAS/include)
 link_directories(/opt/ipopt/lib                 # Ipopt libraries
-        /home/bt304019/Downloads/OpenBLAS-0.2.19)   # My version of Ipopt requires OpenBLAS which is here
+                 /opt/OpenBLAS/lib)   # My version of Ipopt requires OpenBLAS which is here
 
 add_executable(heat
         heat_nlp.cpp
@@ -14,4 +15,4 @@ add_executable(heat
         matrixop.cpp
         matrixop.hpp)
 
-target_link_libraries(heat ipopt boost_system boost_filesystem)
+target_link_libraries(heat ipopt lapack blas boost_system boost_filesystem)
