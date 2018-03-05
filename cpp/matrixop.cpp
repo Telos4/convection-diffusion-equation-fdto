@@ -68,7 +68,7 @@ MATRIXOP::MATRIXOP(int N_, string file_A, string file_B_y, string file_B_w, stri
     closed_loop_cost = 0;
 
     //assuming an n x n grid in heat2d.py, not used in 1d case 
-    discretization_n = (int) sqrt(n_y) - 1;
+    discretization_n = (int) sqrt(n_y);
 
     closed_values = closed_values_;
     open_values = open_values_;
@@ -345,13 +345,13 @@ void MATRIXOP::A_eq() {
 
 void MATRIXOP::initialize_order() {
     //assumption: we have a n x n grid
-    //in dof_x and dof_y we have the x and y coordinates of every degree of freedom (the state variables) of the unit square mesh from the pde. (not ordered)
+    //in dof_x and dof_y we have the x and y indices of every degree of freedom (the state variables) of the unit square mesh from the pde. (not ordered)
     //to be able to have a ordered output of our state we need to know the position every state variable should be written to
     //order is given by (n+1)*y+x, because n is the number of degrees of freedom per column minus one
-    //discretization_n * dof_x[i] is the same as dividing by the grid width, returns the x-position as integer
+
     order.resize(n_y);
     for (int i = 0; i < n_y; ++i) {
-	order[i] = (int) (discretization_n * dof_x[i] + discretization_n * (discretization_n + 1) * dof_y[i]);
+	order[i] = dof_x[i] + discretization_n * dof_y[i];
     }
 }
 

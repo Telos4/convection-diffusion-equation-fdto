@@ -10,7 +10,7 @@ from collections import OrderedDict
 set_log_level(WARNING)
 
 # Prepare a mesh
-n = 10
+n = 30
 #mesh = UnitIntervalMesh(100)
 mesh = UnitSquareMesh(n,n)
 
@@ -23,7 +23,7 @@ N = 10
 # boundary heat conductivity parameters
 alpha = Constant(1.0)
 beta = Constant(1.0)
-gamma = Constant(1.0e3)
+gamma = Constant(1.0e5)
 
 # Compile sub domains for boundaries
 tol = 1e-14
@@ -106,7 +106,7 @@ def output_matrices():
     meshfile.close()
 #save coordinates of degree of freedoms (vertices with linear elements)
     gdim = mesh.geometry().dim()
-    dofs = U.tabulate_dof_coordinates().reshape((-1, gdim))
+    dofs = n * U.tabulate_dof_coordinates().reshape((-1, gdim))
     dof_file_x = open("dof_x.txt", "w")
     dof_file_y = open("dof_y.txt", "w")
 
@@ -114,8 +114,8 @@ def output_matrices():
     dof_file_y.write(str(len(dofs)) + "\n")
 
     for val in dofs:
-        dof_file_x.write(str(val[0]) + "\n")
-        dof_file_y.write(str(val[1]) + "\n")
+        dof_file_x.write(str(int(round(val[0]))) + "\n")
+        dof_file_y.write(str(int(round(val[1]))) + "\n")
     dof_file_x.close
     dof_file_y.close
 
