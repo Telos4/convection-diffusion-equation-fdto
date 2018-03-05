@@ -16,6 +16,7 @@ import matplotlib
 #matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.animation as manimation
+import ConfigParser as cp
 
 from subprocess import call
 from pathlib import Path
@@ -76,16 +77,49 @@ class SimulationResult:
                 self.w_ol.append(np.loadtxt(str(q), ndmin=1))
 
         # find parameters
-        try:
-            self.L = len(self.closed_loop_cost)
-        except AttributeError:
-            print("closed loop not available")
+        config = cp.ConfigParser()
+        q = p / 'parameters.txt'
+        if q.exists():
+            print(str(q))
+            config.read(str(q))
+            print(config.sections())
+            #values = config['param']
 
-        try:
-            self.N = len(self.u_ol[0])      # MPC horizon
-            self.n_y = len(self.y_ol[0][0]) # number of finite element nodes
-        except AttributeError:
-            print("open loop not available")
+            self.n_disc = config.getint('param', 'discretization_parameter')
+            self.L = config.getint('param', 'steps')
+            self.N = config.getint('param', 'MPC_horizon')
+            self.alpha = config.getfloat('param', 'alpha')
+            self.beta = config.getfloat('param', 'beta')
+            self.y_ref = config.getfloat('param', 'y_ref')
+            self.gamma = config.getfloat('param', 'gamma')
+            self.u_ref = config.getfloat('param', 'u_ref')
+            self.u_upper = config.getfloat('param', 'u_upper')
+            self.u_lower = config.getfloat('param', 'u_lower')
+            self.y_upper = config.getfloat('param', 'y_upper')
+            self.y_lower = config.getfloat('param', 'y_lower')
+            self.w_upper = config.getfloat('param', 'w_upper')
+            self.w_lower = config.getfloat('param', 'w_lower')
+            self.boundary_right = config.getfloat('param', 'boundary_right')
+            self.boundary_left = config.getfloat('param', 'boundary_left')
+            self.boundary_top = config.getfloat('param', 'boundary_top')
+            self.boundary_bot = config.getfloat('param', 'boundary_bot')
+            self.dim2 = config.getboolean('param', 'dim2')
+            self.convection = config.getboolean('param', 'convection')
+            self.function = config.get('param', 'function')
+        else:
+            print("can't find parameters.txt")
+            sys.exit()
+
+        # try:
+        #     self.L = len(self.closed_loop_cost)
+        # except AttributeError:
+        #     print("closed loop not available")
+        #
+        # try:
+        #     self.N = len(self.u_ol[0])      # MPC horizon
+        #     self.n_y = len(self.y_ol[0][0]) # number of finite element nodes
+        # except AttributeError:
+        #     print("open loop not available")
 
 
 
@@ -161,7 +195,7 @@ class SimulationResult:
                 ax.yaxis.label.set_size(20)
 
                 ax.legend(loc='upper left')
-                plt.show()
+                #plt.show()
                 writer.grab_frame()
 
     def plot_open_loop(self,output_file,reference=None,k=0):
@@ -349,19 +383,19 @@ def run_simulations(Ns, L, exec_folder, result_folder, prefix="", ref=False):
     for N in Ns:
         folder_prefix = prefix + "N=" + str(N) + "_L=" + str(L) + "_"
         if ref:
-            call([exec_folder + "heat", "-c", "-L " + str(L), "-N" + str(N), "--ov", "--cv", "--matA=A.mtx", "--matB_w=B_w.mtx",
+            call([exec_folder + "heateq_opt", "-c", "-L " + str(L), "-N" + str(N), "--ov", "--cv", "--matA=A.mtx", "--matB_w=B_w.mtx",
                   "--matB_y=B_y.mtx", "--b_u=b_u.txt", "--b_y_out=b_y_out.txt", "--result_folder=" + result_folder,
-                  "--result_folder_prefix=" + folder_prefix, "--fi"])
+                  "--result_folder_prefix=" + folder_prefix, "--pythonparam=python_parameters.txt", "--dof_x=dof_x.txt", "--dof_y=dof_y.txt", "--output=0", "--fi"])
         else:
-            call([exec_folder + "heat", "-c", "-L " + str(L), "-N" + str(N), "--ov", "--cv", "--matA=A.mtx", "--matB_w=B_w.mtx",
+            call([exec_folder + "heateq_opt", "-c", "-L " + str(L), "-N" + str(N), "--ov", "--cv", "--matA=A.mtx", "--matB_w=B_w.mtx",
                   "--matB_y=B_y.mtx", "--b_u=b_u.txt", "--b_y_out=b_y_out.txt", "--result_folder=" + result_folder,
-                  "--result_folder_prefix=" + folder_prefix])
+                  "--result_folder_prefix=" + folder_prefix, "--pythonparam=python_parameters.txt", "--dof_x=dof_x.txt", "--dof_y=dof_y.txt", "--output=0"])
 
 
 
 if __name__ == "__main__":
-    exec_folder = 'cpp/cmake-build-debug/'  # folder with executable
-    result_folder = 'results/'              # folder where results are stored
+    exec_folder = 'cpp/'  # folder with executable
+    result_folder = 'results3/'              # folder where results are stored
 
     sim = False
     if sim == True:
@@ -369,7 +403,7 @@ if __name__ == "__main__":
         min_N = 40
         max_N = 40
         #Ns = range(min_N,max_N+1)
-        Ns = [10, 20, 30, 40]
+        Ns = [10]
         L = 75
         run_simulations(Ns, L, exec_folder, result_folder, prefix="mpc_")
 
@@ -425,7 +459,7 @@ if __name__ == "__main__":
 
     # create videos of mpc closed loop simulations
     for r in mpc_list:
-        r.plot_closed_loop('figures/heat_N={}.mp4'.format(r.N), L=100, reference=opt_result)
+        r.plot_closed_loop('figures/convheat_N={}.mp4'.format(r.N), L=100, reference=opt_result)
         #r.plot_open_loop('figures/ol_heat_N={}.mp4'.format(r.N), k=0, reference=ref_result)
 
 

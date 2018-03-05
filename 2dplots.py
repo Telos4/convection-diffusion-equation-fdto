@@ -127,6 +127,12 @@ class SimulationResult:
         with writer.saving(fig, output_file, 100):
             for i in range(0, L):
                 Z = np.reshape(self.y_cl[i], (self.n_disc, self.n_disc))
+
+                # Plot the surface.
+                surf = ax.plot_surface(X, Y, Z, cmap=cm.coolwarm, vmin = -0.3, vmax = 0.3, linewidth=0.0, antialiased=False, alpha = 0.2)
+
+
+                #visualization of convection
                 Za = np.zeros((len(Xa), len(Ya)))
                 for j in range(0, len(Xa)):
                     for k in range(0, len(Ya)):
@@ -147,14 +153,6 @@ class SimulationResult:
                             Za_right[j][k] = Z[distance_of_arrows * j][distance_of_arrows * k]
                         else:
                             Za_right[j][k] = Z[distance_of_arrows * j][distance_of_arrows * k + 1]
-                #print(Za)
-
-                #print(Z)
-                #print(X)
-                # Plot the surface.
-                #ax.hold(False)
-                surf = ax.plot_surface(X, Y, Z, cmap=cm.coolwarm, vmin = -0.3, vmax = 0.3, linewidth=0.0, antialiased=False, alpha = 0.2)
-                #surf = ax.plot_wireframe(X, Y, Z)
 
                 #save difference between Za and Za shifted left/right for z-component of vector, y=0, x depends on sign of w (either +h or -h), multiply x,z by w for length
                 factor = 100
@@ -178,43 +176,13 @@ class SimulationResult:
                 ax.zaxis.label.set_size(20)
 
                 # Add a color bar which maps values to colors.
-                #if(i == 0):
-                    #fig.colorbar(surf, shrink=0.5, aspect=5)
+                if(i == 0):
+                    fig.colorbar(surf, shrink=0.5, aspect=5)
+
                 #plt.show()
+
                 writer.grab_frame()
                 plt.cla()
-
-    def plot2d(self):
-
-
-
-        fig = plt.figure()
-        ax = fig.gca(projection='3d')
-
-        h = 1./(self.n_disc - 1)
-        # Make data.
-        X = np.arange(0, 1+h, h)
-        Y = np.arange(0, 1+h, h)
-        X, Y = np.meshgrid(X, Y)
-        Z = np.reshape(self.y_cl[40], (self.n_disc, self.n_disc))
-
-        #print(Z)
-        #print(X)
-        # Plot the surface.
-        surf = ax.plot_surface(X, Y, Z, cmap=cm.coolwarm,
-                               linewidth=0, antialiased=False)
-
-        # Customize the z axis.
-        ax.set_zlim(-1.01, 1.01)
-        ax.zaxis.set_major_locator(LinearLocator(10))
-        ax.zaxis.set_major_formatter(FormatStrFormatter('%.02f'))
-
-        # Add a color bar which maps values to colors.
-        fig.colorbar(surf, shrink=0.5, aspect=5)
-
-        plt.show()
-
-
 
 
 def run_simulations(Ns, L, exec_folder, result_folder, prefix="", ref=False):
@@ -236,14 +204,14 @@ if __name__ == "__main__":
     exec_folder = 'cpp/'  # folder with executable
     result_folder = 'results3/'              # folder where results are stored
 
-    sim = False
+    sim = True
     if sim == True:
         # generate results
         min_N = 40
         max_N = 40
         #Ns = range(min_N,max_N+1)
         Ns = [5]
-        L = 100
+        L = 10
         run_simulations(Ns, L, exec_folder, result_folder, prefix="mpc_")
 
         # reference solution (= open loop simulation with long horizon)
