@@ -20,7 +20,8 @@ import ConfigParser as cp
 
 from subprocess import call
 from pathlib import Path
-
+from mpl_toolkits.mplot3d import Axes3D
+from matplotlib import cm
 lb_y = -0.15
 ub_y =  0.15
 
@@ -80,10 +81,7 @@ class SimulationResult:
         config = cp.ConfigParser()
         q = p / 'parameters.txt'
         if q.exists():
-            print(str(q))
             config.read(str(q))
-            print(config.sections())
-            #values = config['param']
 
             self.n_disc = config.getint('param', 'discretization_parameter')
             self.L = config.getint('param', 'steps')
@@ -110,18 +108,6 @@ class SimulationResult:
             print("can't find parameters.txt")
             sys.exit()
 
-        # try:
-        #     self.L = len(self.closed_loop_cost)
-        # except AttributeError:
-        #     print("closed loop not available")
-        #
-        # try:
-        #     self.N = len(self.u_ol[0])      # MPC horizon
-        #     self.n_y = len(self.y_ol[0][0]) # number of finite element nodes
-        # except AttributeError:
-        #     print("open loop not available")
-
-
 
     def plot_closed_loop(self, output_file, reference=None, L=None):
         if L is None:
@@ -136,67 +122,151 @@ class SimulationResult:
         plt.rc('text', usetex=True)
         plt.rc('font', family='serif')
 
-        h = 1.0/(self.n_y - 1)
-        domain = np.arange(0.0, 1.0+h, h)
-        subdomain = np.arange(0.25, 0.75+h, h)
-        fig, ax = plt.subplots()
-        #ax.hold(False)
+        #2 dimensions
+        if self.dim2:
+            fig = plt.figure()
+            ax = fig.gca(projection='3d')
+            #ax.azim = 90
+            #ax.elev = 0
 
-        with writer.saving(fig, output_file, 100):
-            for i in range(0, L):
-                ax.plot(domain, self.y_cl[i], color='k', linewidth=linewidth_global, label='$y\;(N=' + str(self.N) + ')$')
+            h = 1./(self.n_disc)
+            # Make data.
+            X = np.arange(0, 1+0.5*h, h)
+            Y = np.arange(0, 1+0.5*h, h)
+            X, Y = np.meshgrid(X, Y)
 
-                subdivisions = 20
-                for j in range(0, subdivisions):
-                    k = (self.n_y-1)/subdivisions * j
-                    k1 = (self.n_y-1)/subdivisions * (j+1)
-                    lx = (self.n_y-1)/subdivisions * h
-                    ly = self.y_cl[i][k1] - self.y_cl[i][k]
-                    if self.w_cl[i] <= 0.0:
-                        px1 = h * k
-                        py1 = self.y_cl[i][k]
-                        px2 = lx
-                        py2 = ly
+            distance_of_arrows =  5
+            Xa = np.arange(0, 1+0.5*h, distance_of_arrows * h)
+            Ya = np.arange(0, 1+0.5*h, distance_of_arrows * h)
+            Xa, Ya = np.meshgrid(Xa, Ya)
+
+            with writer.saving(fig, output_file, 100):
+                for i in range(0, L):
+                    Z = np.reshape(self.y_cl[i], (self.n_disc + 1, self.n_disc + 1))
+
+                    # Plot the surface.
+                    surf = ax.plot_surface(X, Y, Z, cmap=cm.coolwarm, vmin = -0.3, vmax = 0.3, linewidth=0.0, antialiased=False, alpha = 0.2)
+
+
+                    #visualization of convection
+                    Za = np.zeros((len(Xa), len(Ya)))
+                    for j in range(0, len(Xa)):
+                        for k in range(0, len(Ya)):
+                            Za[j][k] = Z[distance_of_arrows * j][distance_of_arrows * k]
+
+                    Za_left = np.zeros((len(Xa), len(Ya)))
+                    for j in range(0, len(Xa)):
+                        for k in range(0, len(Ya)):
+                            if k == 0:
+                                Za_left[j][k] = Z[distance_of_arrows * j][distance_of_arrows * k]
+                            else:
+                                Za_left[j][k] = Z[distance_of_arrows * j][distance_of_arrows * k - 1]
+
+                    Za_right = np.zeros((len(Xa), len(Ya)))
+                    for j in range(0, len(Xa)):
+                        for k in range(0, len(Ya)):
+                            if distance_of_arrows * k >= len(X) - 1:
+                                Za_right[j][k] = Z[distance_of_arrows * j][distance_of_arrows * k]
+                            else:
+                                Za_right[j][k] = Z[distance_of_arrows * j][distance_of_arrows * k + 1]
+
+                    #save difference between Za and Za shifted left/right for z-component of vector, y=0, x depends on sign of w (either +h or -h)
+                    #multiply x, z by factor, so all arrows have length 100*w_cl[i]
+
+                    if self.w_cl[i] >= 0:
+                        factor = 100*self.w_cl[i]**2/((Za_left - Za)**2 + h**2)
+                        ax.quiver(Xa, Ya, Za, -h * factor, 0, (Za_left - Za) * factor)
                     else:
-                        px1 = h * k1
-                        py1 = self.y_cl[i][k1]
-                        px2 = -lx
-                        py2 = -ly
-                    head_width = ly * min(self.w_cl[i], 0.5) * 5
-                    head_length = lx/2 * min(self.w_cl[i], 0.5) * 5
-                    overhang = 0.9
-                    head_lr = False
+                        factor = 100*self.w_cl[i]**2/((Za_right - Za)**2 + h**2)
+                        ax.quiver(Xa, Ya, Za, -h * factor, 0, (Za_right - Za) * factor)
 
-                    ax.arrow(px1, py1, px2, py2, head_width=head_width, head_length=head_length, fc='k',
-                             ec='b', overhang=overhang, length_includes_head=True, head_starts_at_zero=head_lr)
 
-                ax.hold(True)
-                # plot constraints
-                ax.plot(subdomain, lb_y * np.ones(subdomain.shape), color='r', linewidth=linewidth_global)
-                ax.plot(subdomain, ub_y * np.ones(subdomain.shape), color='r', linewidth=linewidth_global)
+                    # Customize the z axis.
+                    ax.set_xlim([0.0, 1.0])
+                    ax.set_ylim([0.0, 1.0])
+                    ax.set_zlim([-0.5, 0.5])
 
-                ax.plot([0.95, 1.0], [ub_u, ub_u], color='b', linewidth=linewidth_global)
-                ax.plot([0.95, 1.0], [lb_u, lb_u], color='b', linewidth=linewidth_global)
+                    # plot text with time
+                    ax.text(0.8, 0.4, 1.0, 't = {:5.3f}'.format((i)*delta_t), bbox={'facecolor':'white', 'pad':10})
 
-                # plot text with time
-                ax.text(0.8, 0.4, 't = {:5.3f}'.format((i)*delta_t), bbox={'facecolor':'white', 'pad':10})
-                ax.hold(False)
+                    ax.set(xlabel='$x$', ylabel='$y$', zlabel = '$value$')
+                    ax.xaxis.label.set_size(20)
+                    ax.yaxis.label.set_size(20)
+                    ax.zaxis.label.set_size(20)
 
-                if reference:
+                    # Add a color bar which maps values to colors.
+                    if(i == 0):
+                        fig.colorbar(surf, shrink=0.5, aspect=5)
+
+                    #plt.show()
+
+                    writer.grab_frame()
+                    plt.cla()
+
+
+        #1 dimension
+        else:
+            h = 1.0/(self.n_y - 1)
+            domain = np.arange(0.0, 1.0+0.5*h, h)
+            subdomain = np.arange(0.25, 0.75+0.5*h, h)
+            fig, ax = plt.subplots()
+            #ax.hold(False)
+
+            with writer.saving(fig, output_file, 100):
+                for i in range(0, L):
+                    ax.plot(domain, self.y_cl[i], color='k', linewidth=linewidth_global, label='$y\;(N=' + str(self.N) + ')$')
+
+                    subdivisions = 20
+                    for j in range(0, subdivisions):
+                        k = (self.n_y-1)/subdivisions * j
+                        k1 = (self.n_y-1)/subdivisions * (j+1)
+                        lx = (self.n_y-1)/subdivisions * h
+                        ly = self.y_cl[i][k1] - self.y_cl[i][k]
+                        if self.w_cl[i] <= 0.0:
+                            px1 = h * k
+                            py1 = self.y_cl[i][k]
+                            px2 = lx
+                            py2 = ly
+                        else:
+                            px1 = h * k1
+                            py1 = self.y_cl[i][k1]
+                            px2 = -lx
+                            py2 = -ly
+                        head_width = ly * min(self.w_cl[i], 0.5) * 5
+                        head_length = lx/2 * min(self.w_cl[i], 0.5) * 5
+                        overhang = 0.9
+                        head_lr = False
+
+                        ax.arrow(px1, py1, px2, py2, head_width=head_width, head_length=head_length, fc='k',
+                                 ec='b', overhang=overhang, length_includes_head=True, head_starts_at_zero=head_lr)
+
                     ax.hold(True)
-                    ax.plot(domain, reference.y_ol[0][i], color='g', linewidth=linewidth_global, label='$y^*$')
+                    # plot constraints
+                    ax.plot(subdomain, self.y_lower * np.ones(subdomain.shape), color='r', linewidth=linewidth_global)
+                    ax.plot(subdomain, self.y_upper * np.ones(subdomain.shape), color='r', linewidth=linewidth_global)
+
+                    ax.plot([0.95, 1.0], [self.u_upper, self.u_upper], color='b', linewidth=linewidth_global)
+                    ax.plot([0.95, 1.0], [self.u_lower, self.u_lower], color='b', linewidth=linewidth_global)
+
+                    # plot text with time
+                    ax.text(0.8, 0.4, 't = {:5.3f}'.format((i)*delta_t), bbox={'facecolor':'white', 'pad':10})
                     ax.hold(False)
 
-                ax.set_xlim([0.0, 1.0])
-                ax.set_ylim([-0.5, 0.5])
+                    if reference:
+                        ax.hold(True)
+                        ax.plot(domain, reference.y_ol[0][i], color='g', linewidth=linewidth_global, label='$y^*$')
+                        ax.hold(False)
 
-                ax.set(xlabel='$\Omega$', ylabel='$y$')
-                ax.xaxis.label.set_size(20)
-                ax.yaxis.label.set_size(20)
+                    ax.set_xlim([0.0, 1.0])
+                    ax.set_ylim([-0.5, 0.5])
 
-                ax.legend(loc='upper left')
-                #plt.show()
-                writer.grab_frame()
+                    ax.set(xlabel='$\Omega$', ylabel='$y$')
+                    ax.xaxis.label.set_size(20)
+                    ax.yaxis.label.set_size(20)
+
+                    ax.legend(loc='upper left')
+                    #plt.show()
+                    writer.grab_frame()
 
     def plot_open_loop(self,output_file,reference=None,k=0):
         FFMpegWriter = manimation.writers['ffmpeg']
@@ -208,8 +278,8 @@ class SimulationResult:
         plt.rc('font', family='serif')
 
         h = 1.0/(self.n_y - 1)
-        domain = np.arange(0.0, 1.0+h, h)
-        subdomain = np.arange(0.25, 0.75+h, h)
+        domain = np.arange(0.0, 1.0+0.5*h, h)
+        subdomain = np.arange(0.25, 0.75+0.5*h, h)
         fig, ax = plt.subplots()
 
         with writer.saving(fig, output_file, 100):
@@ -378,42 +448,53 @@ def plot_turnpike(results, reference, output_file='test.pdf'):
     plt.savefig(output_file)
     plt.show()
 
-def run_simulations(Ns, L, exec_folder, result_folder, prefix="", ref=False):
+def run_simulations(Ns, L, dim, exec_folder, result_folder, prefix="", ref=False):
     # run simulations
     for N in Ns:
         folder_prefix = prefix + "N=" + str(N) + "_L=" + str(L) + "_"
-        if ref:
-            call([exec_folder + "heat", "-c", "-L " + str(L), "-N" + str(N), "--ov", "--cv", "--matA=A.mtx", "--matB_w=B_w.mtx",
-                  "--matB_y=B_y.mtx", "--b_u=b_u.txt", "--b_y_out=b_y_out.txt", "--result_folder=" + result_folder,
-                  "--result_folder_prefix=" + folder_prefix, "--pythonparam=python_parameters.txt", "--dof_x=dof_x.txt", "--dof_y=dof_y.txt", "--output=0", "--fi"])
-        else:
-            call([exec_folder + "heat", "-c", "-L " + str(L), "-N" + str(N), "--ov", "--cv", "--matA=A.mtx", "--matB_w=B_w.mtx",
-                  "--matB_y=B_y.mtx", "--b_u=b_u.txt", "--b_y_out=b_y_out.txt", "--result_folder=" + result_folder,
-                  "--result_folder_prefix=" + folder_prefix,
-                  "--y_lower=-1.0", "--y_upper=1.0",
-                  "--pythonparam=python_parameters.txt"])
+        if dim == 1:
+            if ref:
+                call([exec_folder + "heat", "-c", "-L " + str(L), "-N" + str(N), "--ov", "--cv", "--matA=A.mtx", "--matB_w=B_w.mtx",
+                      "--matB_y=B_y.mtx", "--b_u=b_u.txt", "--b_y_out=b_y_out.txt", "--result_folder=" + result_folder,
+                      "--result_folder_prefix=" + folder_prefix, "--pythonparam=python_parameters.txt", "--dof_x=dof_x.txt", "--dof_y=dof_y.txt", "--output=0", "--fi"])
+            else:
+                call([exec_folder + "heat", "-c", "-L " + str(L), "-N" + str(N), "--ov", "--cv", "--matA=A.mtx", "--matB_w=B_w.mtx",
+                      "--matB_y=B_y.mtx", "--b_u=b_u.txt", "--b_y_out=b_y_out.txt", "--result_folder=" + result_folder,
+                      "--result_folder_prefix=" + folder_prefix,
+                      "--y_lower=-1.0", "--y_upper=1.0",
+                      "--pythonparam=python_parameters.txt"])
 
+        elif dim == 2:
+            if ref:
+                call([exec_folder + "heat", "-c", "-d", "-L " + str(L), "-N" + str(N), "--ov", "--cv", "--matA=A.mtx", "--matB_w=B_w.mtx",
+                      "--matB_y=B_y.mtx", "--b_u=b_u.txt", "--b_y_out=b_y_out.txt", "--result_folder=" + result_folder,
+                      "--result_folder_prefix=" + folder_prefix, "--fi", "--pythonparam=python_parameters.txt", "--dof_x=dof_x.txt", "--dof_y=dof_y.txt", "--output=5"])
+            else:
+                call([exec_folder + "heat", "-c", "-d", "-L " + str(L), "-N" + str(N), "--ov", "--cv", "--matA=A.mtx", "--matB_w=B_w.mtx",
+                      "--matB_y=B_y.mtx", "--b_u=b_u.txt", "--b_y_out=b_y_out.txt", "--result_folder=" + result_folder,
+                      "--result_folder_prefix=" + folder_prefix, "--pythonparam=python_parameters.txt", "--dof_x=dof_x.txt", "--dof_y=dof_y.txt", "--output=0"])
 
 
 if __name__ == "__main__":
-    exec_folder = 'cpp/'  # folder with executable
-    result_folder = 'results3/'              # folder where results are stored
+    exec_folder = 'cpp/cmake-build-debug/'  # folder with executable
+    result_folder = 'results4/'              # folder where results are stored
 
     sim = True
+    dim = 2
     if sim == True:
         # generate results
         min_N = 40
         max_N = 40
         #Ns = range(min_N,max_N+1)
         Ns = [5]
-        L = 50
-        run_simulations(Ns, L, exec_folder, result_folder, prefix="mpc_")
+        L = 100
+        run_simulations(Ns, L, dim, exec_folder, result_folder, prefix="mpc_")
 
         # reference solution (= open loop simulation with long horizon)
-        run_simulations([max_N + L], 1, exec_folder, result_folder, prefix="ref_", ref=True)
+        #run_simulations([max_N + L], 1, dim, exec_folder, result_folder, prefix="ref_", ref=True)
 
         # overtaking solution (= open loop simulation with long horizon)
-        run_simulations([max_N + L], 1, exec_folder, result_folder, prefix="opt_")
+        #run_simulations([max_N + L], 1, dim, exec_folder, result_folder, prefix="opt_")
 
     #run_simulations([1], 250, exec_folder, result_folder, prefix="unc_")
 
@@ -432,12 +513,12 @@ if __name__ == "__main__":
     mpc_list = sorted(mpc_list, key=lambda r: r.N)  # sort by horizon length
 
     # reference trajectory
-    ref_result_folder = map(str,list(p.glob('ref_*')))[0]
-    ref_result = SimulationResult(ref_result_folder)
+    #ref_result_folder = map(str,list(p.glob('ref_*')))[0]
+    #ref_result = SimulationResult(ref_result_folder)
 
     # overtaking optimal trajectory
-    opt_result_folder = map(str, list(p.glob('opt_*')))[0]
-    opt_result = SimulationResult(opt_result_folder)
+    #opt_result_folder = map(str, list(p.glob('opt_*')))[0]
+    #opt_result = SimulationResult(opt_result_folder)
 
     # uncontrolled
     #unc_folder = map(str, list(p.glob('unc_*')))[0]
@@ -461,7 +542,7 @@ if __name__ == "__main__":
 
     # create videos of mpc closed loop simulations
     for r in mpc_list:
-        r.plot_closed_loop('figures/convheat_N={}.mp4'.format(r.N), L=100, reference=opt_result)
+        r.plot_closed_loop('figures/heat_N={}.mp4'.format(r.N), L=100)#, reference=opt_result)
         #r.plot_open_loop('figures/ol_heat_N={}.mp4'.format(r.N), k=0, reference=ref_result)
 
 
