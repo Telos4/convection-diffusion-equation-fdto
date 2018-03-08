@@ -17,16 +17,14 @@ import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.animation as manimation
 import ConfigParser as cp
+import sys
+import mpl_toolkits.mplot3d.art3d as art3d
 
 from subprocess import call
 from pathlib import Path
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
-lb_y = -0.15
-ub_y =  0.15
-
-lb_u = -0.25
-ub_u =  0.25
+from matplotlib.patches import Rectangle
 
 delta_t = 1.0e-2
 linewidth_global = 2.0
@@ -135,7 +133,7 @@ class SimulationResult:
             Y = np.arange(0, 1+0.5*h, h)
             X, Y = np.meshgrid(X, Y)
 
-            distance_of_arrows =  5
+            distance_of_arrows = 2
             Xa = np.arange(0, 1+0.5*h, distance_of_arrows * h)
             Ya = np.arange(0, 1+0.5*h, distance_of_arrows * h)
             Xa, Ya = np.meshgrid(Xa, Ya)
@@ -143,9 +141,9 @@ class SimulationResult:
             with writer.saving(fig, output_file, 100):
                 for i in range(0, L):
                     Z = np.reshape(self.y_cl[i], (self.n_disc + 1, self.n_disc + 1))
-
+                    Z = np.fliplr(Z)
                     # Plot the surface.
-                    surf = ax.plot_surface(X, Y, Z, cmap=cm.coolwarm, vmin = -0.3, vmax = 0.3, linewidth=0.0, antialiased=False, alpha = 0.2)
+                    surf = ax.plot_surface(X, Y, Z, cmap=cm.coolwarm, vmin = -0.3, vmax = 0.3, linewidth=0.0, antialiased=False, alpha = 0.3)
 
 
                     #visualization of convection
@@ -173,13 +171,33 @@ class SimulationResult:
                     #save difference between Za and Za shifted left/right for z-component of vector, y=0, x depends on sign of w (either +h or -h)
                     #multiply x, z by factor, so all arrows have length 100*w_cl[i]
 
+                    factor = 0.1
                     if self.w_cl[i] >= 0:
-                        factor = 100*self.w_cl[i]**2/((Za_left - Za)**2 + h**2)
-                        ax.quiver(Xa, Ya, Za, -h * factor, 0, (Za_left - Za) * factor)
+                        ax.quiver(Xa, Ya, Za, -h * self.w_cl[i] * factor, 0, (Za_left - Za) * self.w_cl[i] * factor)
                     else:
-                        factor = 100*self.w_cl[i]**2/((Za_right - Za)**2 + h**2)
-                        ax.quiver(Xa, Ya, Za, -h * factor, 0, (Za_right - Za) * factor)
+                        ax.quiver(Xa, Ya, Za, -h * self.w_cl[i] * factor, 0, (Za_right - Za) * self.w_cl[i] * factor)
 
+                    #upper boundary y
+                    p1 = Rectangle((self.boundary_bot, self.boundary_left), self.boundary_right - self.boundary_left, self.boundary_top - self. boundary_bot,
+                        alpha = 0.9, color = 'green')
+                    ax.add_patch(p1)
+                    art3d.pathpatch_2d_to_3d(p1, z = self.y_upper, zdir="z")
+
+                    #lower boundary y
+                    p2 = Rectangle((self.boundary_bot, self.boundary_left), self.boundary_right - self.boundary_left, self.boundary_top - self. boundary_bot,
+                        alpha = 0.9, color = 'green')
+                    ax.add_patch(p2)
+                    art3d.pathpatch_2d_to_3d(p2, z = self.y_lower, zdir="z")
+
+                    #upper boundary u
+                    p3 = Rectangle((0.98, 0), 0.02, 1, alpha = 0.9, color = 'green')
+                    ax.add_patch(p3)
+                    art3d.pathpatch_2d_to_3d(p3, z = self.u_upper, zdir="z")
+
+                    #lower boundary u
+                    p3 = Rectangle((0.98, 0), 0.02, 1, alpha = 0.9, color = 'green')
+                    ax.add_patch(p3)
+                    art3d.pathpatch_2d_to_3d(p3, z = self.u_lower, zdir="z")
 
                     # Customize the z axis.
                     ax.set_xlim([0.0, 1.0])
@@ -476,8 +494,8 @@ def run_simulations(Ns, L, dim, exec_folder, result_folder, prefix="", ref=False
 
 
 if __name__ == "__main__":
-    exec_folder = 'cpp/cmake-build-debug/'  # folder with executable
-    result_folder = 'results4/'              # folder where results are stored
+    exec_folder = 'cpp/'#cmake-build-debug/'  # folder with executable
+    result_folder = 'results5/'              # folder where results are stored
 
     sim = True
     dim = 2
