@@ -83,8 +83,8 @@ bool HEAT_NLP::get_bounds_info(Index n, Number* x_l, Number* x_u,
 
 	for (int k = 1; k < data.N + 1; ++k) {
 	    for (int i = 0; i < data.n_y; ++i) {
-		double x = data.dof_x[i];
-		double y = data.dof_y[i];
+		double x = data.dof_x[i] / data.discretization_n;
+		double y = data.dof_y[i] / data.discretization_n;
 		if (x >= left && x <= right && y >= bot && y <= top) {
 		    x_u[k * data.n_y + i] = data.y_upper;
 		    x_l[k * data.n_y + i] = data.y_lower;
