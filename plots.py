@@ -206,7 +206,7 @@ class SimulationResult:
 
         #1 dimension
         else:
-            h = 1.0/(self.n_y - 1)
+            h = 1.0/(self.n_disc)
             domain = np.arange(0.0, 1.0+0.5*h, h)
             subdomain = np.arange(0.25, 0.75+0.5*h, h)
             fig, ax = plt.subplots()
@@ -218,9 +218,9 @@ class SimulationResult:
 
                     subdivisions = 20
                     for j in range(0, subdivisions):
-                        k = (self.n_y-1)/subdivisions * j
-                        k1 = (self.n_y-1)/subdivisions * (j+1)
-                        lx = (self.n_y-1)/subdivisions * h
+                        k = (self.n_disc-1)/subdivisions * j
+                        k1 = (self.n_disc-1)/subdivisions * (j+1)
+                        lx = (self.n_disc-1)/subdivisions * h
                         ly = self.y_cl[i][k1] - self.y_cl[i][k]
                         if self.w_cl[i] <= 0.0:
                             px1 = h * k
@@ -277,7 +277,7 @@ class SimulationResult:
         plt.rc('text', usetex=True)
         plt.rc('font', family='serif')
 
-        h = 1.0/(self.n_y - 1)
+        h = 1.0/(self.n_disc - 1)
         domain = np.arange(0.0, 1.0+0.5*h, h)
         subdomain = np.arange(0.25, 0.75+0.5*h, h)
         fig, ax = plt.subplots()
@@ -288,9 +288,9 @@ class SimulationResult:
 
                 subdivisions = 20
                 for j in range(0, subdivisions):
-                    g = (self.n_y - 1) / subdivisions * j
-                    g1 = (self.n_y - 1) / subdivisions * (j + 1)
-                    lx = (self.n_y - 1) / subdivisions * h
+                    g = (self.n_disc - 1) / subdivisions * j
+                    g1 = (self.n_disc - 1) / subdivisions * (j + 1)
+                    lx = (self.n_disc - 1) / subdivisions * h
                     ly = self.y_ol[k][i][g1] - self.y_ol[k][i][g]
                     if self.w_ol[k][i] <= 0.0:
                         px1 = h * g
@@ -347,7 +347,7 @@ class SimulationResult:
         plt.show()
 
     # def plot_open_loop(self):
-    #     domain = np.arange(0.0, 1.0, 1.0/self.n_y)
+    #     domain = np.arange(0.0, 1.0, 1.0/self.n_disc)
     #     fig, ax = plt.subplots()
     #     ax.hold(False)
     #
@@ -461,7 +461,7 @@ def run_simulations(Ns, L, dim, exec_folder, result_folder, prefix="", ref=False
                 call([exec_folder + "heat", "-c", "-L " + str(L), "-N" + str(N), "--ov", "--cv", "--matA=A.mtx", "--matB_w=B_w.mtx",
                       "--matB_y=B_y.mtx", "--b_u=b_u.txt", "--b_y_out=b_y_out.txt", "--result_folder=" + result_folder,
                       "--result_folder_prefix=" + folder_prefix,
-                      "--y_lower=-1.0", "--y_upper=1.0",
+                      "--y_lower=-0.15", "--y_upper=0.15",
                       "--pythonparam=python_parameters.txt"])
 
         elif dim == 2:
@@ -480,13 +480,13 @@ if __name__ == "__main__":
     result_folder = 'results4/'              # folder where results are stored
 
     sim = True
-    dim = 2
+    dim = 1
     if sim == True:
         # generate results
         min_N = 40
         max_N = 40
         #Ns = range(min_N,max_N+1)
-        Ns = [5]
+        Ns = [20]
         L = 100
         run_simulations(Ns, L, dim, exec_folder, result_folder, prefix="mpc_")
 
