@@ -12,6 +12,7 @@
 #include "matrixop.hpp"
 #include <valarray>
 #include <fstream>
+#include "eigen3/Eigen/Sparse"
 
 using namespace Ipopt;
 

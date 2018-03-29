@@ -17,24 +17,28 @@
 using namespace Ipopt;
 
 int optimize(int steps, MATRIXOP & data, int outputlevel);
-void closed_cost_vs_horizon_length(int max_MPC_horizon, int steps, string matrix_A, string matrix_B_y,
-	string matrix_B_w, string vec_b_u, string vec_b_y_out, string dof_x, string dof_y, string pythonparam,
-	double eps, double y_ref, double u_ref, double u_upper, double u_lower, double y_upper, double y_lower,
-	double w_upper, double w_lower, double boundary_right, double boundary_left, double boundary_top, double boundary_bot, bool dim2, bool convection, int outputlevel);
-//void solver_test(MATRIXOP &data, int steps);
+
 void write_parameters(int MPC_horizon, int steps, string matrix_A, string matrix_B_y, string matrix_B_w, string vec_b_u,
 	string vec_b_y_out, string dof_x, string dof_y, string pythonparam_, double eps, double y_ref, double u_ref,
-	double u_upper, double u_lower, double y_upper, double y_lower, double w_upper, double w_lower, double boundary_right, double boundary_left, double boundary_top, double boundary_bot, bool dim2,
-	bool convection, bool closed_values, bool open_values, bool free_init_value, bool cost_vs_horizon,
-	string foldername);
+	double u_upper, double u_lower, double y_upper, double y_lower, double w_upper, double w_lower, double boundary_right, double boundary_left, double boundary_top, double boundary_bot, double std_dev,
+	bool dim2, bool convection, bool closed_values, bool open_values, bool free_init_value, bool inexact_data, string foldername);
+
+//not used
+//void closed_cost_vs_horizon_length(int max_MPC_horizon, int steps, string matrix_A, string matrix_B_y,
+//	string matrix_B_w, string vec_b_u, string vec_b_y_out, string dof_x, string dof_y, string pythonparam,
+//	double eps, double y_ref, double u_ref, double u_upper, double u_lower, double y_upper, double y_lower,
+//	double w_upper, double w_lower, double boundary_right, double boundary_left, double boundary_top, double boundary_bot, bool dim2, bool convection, int outputlevel);
+//void solver_test(MATRIXOP &data, int steps);
 
 int main(int argc, char** argv) {
+    //default parameters for the optimization
     bool dim2 = false;
     bool convection = false;
     bool closed_values = false;
     bool open_values = false;
-    bool cost_vs_horizon = false;
+    //bool cost_vs_horizon = false;
     bool free_init_value = false;
+    bool inexact_data = false;
 
     int steps = 1;
     int MPC_horizon = 100;
@@ -53,6 +57,7 @@ int main(int argc, char** argv) {
     double boundary_left = 0.25;
     double boundary_top = 0.75;
     double boundary_bot = 0.25;
+    double std_dev = 0;
 
     string matrix_A = "../A.mtx";
     string matrix_B_y = "../B_y.mtx";
@@ -66,6 +71,9 @@ int main(int argc, char** argv) {
     string pythonparam = "../python_parameters.txt";
 
 
+    //code for the command line options
+    //we are using this argument parser library: https://github.com/Taywee/args
+    //the code is a combination of the first three examples given in the link above
 
     args::ArgumentParser parser("convection diffusion equation 1d.", "This goes after the options.");
     args::HelpFlag help(parser, "help", "Display this help menu",{'h', "help"});
@@ -76,8 +84,10 @@ int main(int argc, char** argv) {
     args::Flag closed_values_(parser, "closed values", "save states of the closed loop",{"cv", "closedvalues"});
     args::Flag open_values_(parser, "open values", "save states of all open loop",{"ov", "openvalues"});
     args::Flag free_init_value_(parser, "free initial value", "indicates whether the intial state should be free",{"fi", "free-init-value"});
-    args::Flag cost_vs_horizon_(parser, "cost vs mpc horizon plot",
-	    "create data for cost vs mpc horizon plot, closed and open loop values will not be written, MPC_horizon functions as your maximal MPC horizon",{"cost_vs_horizon"});
+    args::Flag inexact_data_(parser, "inexact boundary data", "indicates whether the boundary data y_out should be exact or "
+	    "have a gaussian distributed error with mean 0 and standard deviation set in the command line",{"id", "inexact-data"});
+    //args::Flag cost_vs_horizon_(parser, "cost vs mpc horizon plot",
+    //    "create data for cost vs mpc horizon plot, closed and open loop values will not be written, MPC_horizon functions as your maximal MPC horizon",{"cost_vs_horizon"});
 
     args::ValueFlag<int> MPC_horizon_(parser, "mpc horizon", "MPC horizon, N >= 1",{'N', "mpc"});
     args::ValueFlag<int> steps_(parser, "steps", "closed loop step count",{'L', "steps"});
@@ -92,10 +102,11 @@ int main(int argc, char** argv) {
     args::ValueFlag<double> y_lower_(parser, "y_lower", "lower bound for state",{"y_lower"});
     args::ValueFlag<double> w_upper_(parser, "w_upper", "upper bound for convection",{"w_upper"});
     args::ValueFlag<double> w_lower_(parser, "w_lower", "lower bound for convection",{"w_lower"});
-    args::ValueFlag<double> boundary_right_(parser, "boundary_right", "right side of area where boundaries for state are active, 2d",{"boundary_right"});
-    args::ValueFlag<double> boundary_left_(parser, "boundary_left", "left side of area where boundaries for state are active, 2d",{"boundary_left"});
-    args::ValueFlag<double> boundary_top_(parser, "boundary_top", "top side of area where boundaries for state are active, 2d",{"boundary_top"});
-    args::ValueFlag<double> boundary_bot_(parser, "boundary_bot", "bottom side of area where boundaries for state are active, 2d",{"boundary_bot"});
+    args::ValueFlag<double> boundary_right_(parser, "boundary_right", "right side of area where boundaries for state are active, 2d only",{"boundary_right"});
+    args::ValueFlag<double> boundary_left_(parser, "boundary_left", "left side of area where boundaries for state are active, 2d only",{"boundary_left"});
+    args::ValueFlag<double> boundary_top_(parser, "boundary_top", "top side of area where boundaries for state are active, 2d only",{"boundary_top"});
+    args::ValueFlag<double> boundary_bot_(parser, "boundary_bot", "bottom side of area where boundaries for state are active, 2d only",{"boundary_bot"});
+    args::ValueFlag<double> std_dev_(parser, "standard deviation", "standard deviation of the gaussian distributed error",{"std_dev"});
 
     args::ValueFlag<string> matrix_A_(parser, "Matrix A", "matrix A from PDE",{"matA"});
     args::ValueFlag<string> matrix_B_y_(parser, "Matrix B_y", "matrix B_y from PDE",{"matB_y"});
@@ -131,8 +142,9 @@ int main(int argc, char** argv) {
     convection = convection_;
     closed_values = closed_values_;
     open_values = open_values_;
-    cost_vs_horizon = cost_vs_horizon_;
+    //cost_vs_horizon = cost_vs_horizon_;
     free_init_value = free_init_value_;
+    inexact_data = inexact_data_;
 
     //int
     if (MPC_horizon_) {
@@ -185,6 +197,9 @@ int main(int argc, char** argv) {
     if (boundary_bot_) {
 	boundary_bot = args::get(boundary_bot_);
     }
+    if (std_dev_) {
+	std_dev = args::get(std_dev_);
+    }
 
     //string
     if (matrix_A_) {
@@ -222,38 +237,43 @@ int main(int argc, char** argv) {
 
 
     //start program
+
+    /*
     if (cost_vs_horizon) {
 	closed_cost_vs_horizon_length(MPC_horizon, steps, matrix_A, matrix_B_y, matrix_B_w, vec_b_u, vec_b_y_out, dof_x, dof_y, pythonparam, eps, y_ref, u_ref, u_upper, u_lower, y_upper, y_lower, w_upper, w_lower,
 		boundary_right, boundary_left, boundary_top, boundary_bot, dim2, convection, outputlevel);
     }
+    //else {
+     */
+
+    //initialize matrixop object with the paramaters from above
+    MATRIXOP data(MPC_horizon, steps, matrix_A, matrix_B_y, matrix_B_w, vec_b_u, vec_b_y_out, dof_x, dof_y, eps, y_ref, u_ref, u_upper, u_lower, y_upper, y_lower, w_upper, w_lower,
+	    boundary_right, boundary_left, boundary_top, boundary_bot, std_dev, dim2, convection, closed_values, open_values, free_init_value, inexact_data, result_folder, result_folder_prefix);
+    int status = optimize(steps, data, outputlevel);
+
+    if (status == 0) {
+	cout << "problem solved \n";
+    }
     else {
-	MATRIXOP data(MPC_horizon, matrix_A, matrix_B_y, matrix_B_w, vec_b_u, vec_b_y_out, dof_x, dof_y, eps, y_ref, u_ref, u_upper, u_lower, y_upper, y_lower, w_upper, w_lower,
-		boundary_right, boundary_left, boundary_top, boundary_bot, dim2, convection, closed_values, open_values, free_init_value, result_folder, result_folder_prefix);
-	int status = optimize(steps, data, outputlevel);
-
-	if (status == 0) {
-	    cout << "problem solved \n";
-	}
-	else {
-	    cout << "IPopt could'nt solve the problem, use higher outputlevel to investigate \n";
-	    return (1);
-	}
+	cout << "IPopt could'nt solve the problem, use higher outputlevel to investigate \n";
+	return (1);
+    }
 
 
-	if (closed_values || open_values) {
-	    write_parameters(MPC_horizon, steps, matrix_A, matrix_B_y, matrix_B_w, vec_b_u, vec_b_y_out, dof_x, dof_y, pythonparam, eps,
-		    y_ref, u_ref, u_upper, u_lower, y_upper, y_lower, w_upper, w_lower, boundary_right, boundary_left, boundary_top, boundary_bot,
-		    dim2, convection, closed_values, open_values, free_init_value, cost_vs_horizon,
-		    data.foldername);
-	}
+    if (closed_values || open_values) {
+	write_parameters(MPC_horizon, steps, matrix_A, matrix_B_y, matrix_B_w, vec_b_u, vec_b_y_out, dof_x, dof_y, pythonparam, eps,
+		y_ref, u_ref, u_upper, u_lower, y_upper, y_lower, w_upper, w_lower, boundary_right, boundary_left, boundary_top, boundary_bot, std_dev,
+		dim2, convection, closed_values, open_values, free_init_value, inexact_data, data.foldername);
     }
 
     return 0;
 }
 
+//this is a slight variation of the main function found in https://www.coin-or.org/Ipopt/documentation/node23.html#SECTION00053200000000000000
+
 int optimize(int steps, MATRIXOP & data, int outputlevel) {
     int last_status;
-    //outer loop
+    //closed loop
     for (int i = 0; i < steps; ++i) {
 	SmartPtr<TNLP> mynlp = new HEAT_NLP(data);
 
@@ -275,8 +295,13 @@ int optimize(int steps, MATRIXOP & data, int outputlevel) {
 	    app->Options()->SetStringValue("jac_c_constant", "no");
 	    app->Options()->SetStringValue("jac_d_constant", "no");
 
-	    //approximation of the hessian of the lagranage function by only using the hessian of the objective function
-	    //error in u and w of ~10e-3
+	    //approximation of the hessian of the lagrange function by only using the hessian of the objective function when using hessian_constant : yes
+	    //this leads to an error in u and w of ~10e-3 and may be a source of problems
+	    //alternatively set hessian_constant to no and uncomment the hessian_approximation part to use a numerical approximation
+	    //however this leads to a longer runtime
+	    //the exact hessian as found in the documentation is not implemented
+
+
 	    app->Options()->SetStringValue("hessian_constant", "yes");
 	    //app->Options()->SetStringValue("hessian_approximation", "limited-memory");
 	}
@@ -307,7 +332,94 @@ int optimize(int steps, MATRIXOP & data, int outputlevel) {
     return last_status;
 }
 
-void closed_cost_vs_horizon_length(int max_MPC_horizon, int steps, string matrix_A, string matrix_B_y,
+//write parameters of the optimization to a config file, which will be used in plots.py
+
+void write_parameters(int MPC_horizon, int steps, string matrix_A, string matrix_B_y, string matrix_B_w, string vec_b_u,
+	string vec_b_y_out, string dof_x, string dof_y, string pythonparam_, double eps, double y_ref, double u_ref,
+	double u_upper, double u_lower, double y_upper, double y_lower, double w_upper, double w_lower, double boundary_right, double boundary_left, double boundary_top, double boundary_bot, double std_dev,
+	bool dim2, bool convection, bool closed_values, bool open_values, bool free_init_value, bool inexact_data, string foldername) {
+
+    //read and write the parameters of heat.py/heat2d.py 
+    double alpha = 0, beta = 0, gamma = 0;
+    int n = 0;
+    string trash;
+    ifstream pythonparam(pythonparam_);
+    if (pythonparam.is_open()) {
+	pythonparam >> n >> trash >> alpha >> trash >> beta >> trash >> gamma;
+	pythonparam.close();
+    }
+    else {
+	cout << "can't open parameter file from python script" << endl;
+	exit(1);
+    }
+
+    ofstream out(foldername + "parameters.txt");
+    if (out.is_open()) {
+
+	string function = "0.3 * sin(0.1 * i)";
+
+	//set a section for the python configparser
+	out << "[param]" << endl;
+
+	//out << "cost_vs_horizon = " << cost_vs_horizon << endl;
+	out << "discretization_parameter = " << n << endl;
+	out << "alpha = " << alpha << endl;
+	out << "beta = " << beta << endl;
+	out << "gamma = " << gamma << endl;
+	out << "MPC_horizon = " << MPC_horizon << endl;
+	out << "steps = " << steps << endl;
+
+	out << "eps = " << eps << endl;
+	out << "y_ref = " << y_ref << endl;
+	out << "u_ref = " << u_ref << endl;
+	out << "u_upper = " << u_upper << endl;
+	out << "u_lower = " << u_lower << endl;
+	out << "y_upper = " << y_upper << endl;
+	out << "y_lower = " << y_lower << endl;
+	out << "w_upper = " << w_upper << endl;
+	out << "w_lower = " << w_lower << endl;
+	if (dim2) {
+	    out << "boundary_right = " << boundary_right << endl;
+	    out << "boundary_left = " << boundary_left << endl;
+	    out << "boundary_top = " << boundary_top << endl;
+	    out << "boundary_bot = " << boundary_bot << endl;
+	}
+	    //change this
+	else {
+	    out << "boundary_right = " << 0.75 << endl;
+	    out << "boundary_left = " << 0.25 << endl;
+	    out << "boundary_top = " << 0 << endl;
+	    out << "boundary_bot = " << 0 << endl;
+	}
+	out << "std_dev = " << std_dev << endl;
+
+	out << "dim2 = " << dim2 << endl;
+	out << "convection = " << convection << endl;
+	out << "closed_values = " << closed_values << endl;
+	out << "open_values = " << open_values << endl;
+	out << "free_init_value = " << free_init_value << endl;
+	out << "inexact_data = " << inexact_data << endl;
+
+	out << "function = " << function << endl;
+	out << "matrix_A = " << matrix_A << endl;
+	out << "matrix_B_y = " << matrix_B_y << endl;
+	out << "matrix_B_w = " << matrix_B_w << endl;
+	out << "vec_b_u = " << vec_b_u << endl;
+	out << "vec_b_y_out = " << vec_b_y_out << endl;
+	out << "dof_x = " << dof_x << endl;
+	out << "dof_y = " << dof_y << endl;
+
+	out.close();
+    }
+    else {
+	cout << "can't open paramater file to write to" << endl;
+	exit(1);
+    }
+}
+
+
+/*
+ void closed_cost_vs_horizon_length(int max_MPC_horizon, int steps, string matrix_A, string matrix_B_y,
 	string matrix_B_w, string vec_b_u, string vec_b_y_out, string dof_x, string dof_y, string pythonparam,
 	double eps, double y_ref, double u_ref, double u_upper, double u_lower, double y_upper, double y_lower, double w_upper, double w_lower,
 	double boundary_right, double boundary_left, double boundary_top, double boundary_bot, bool dim2, bool convection, int outputlevel) {
@@ -365,87 +477,7 @@ void closed_cost_vs_horizon_length(int max_MPC_horizon, int steps, string matrix
 
     out.close();
 }
-
-void write_parameters(int MPC_horizon, int steps, string matrix_A, string matrix_B_y, string matrix_B_w, string vec_b_u, string vec_b_y_out, string dof_x, string dof_y, string pythonparam_,
-	double eps, double y_ref, double u_ref, double u_upper, double u_lower, double y_upper, double y_lower, double w_upper, double w_lower,
-	double boundary_right, double boundary_left, double boundary_top, double boundary_bot,
-	bool dim2, bool convection, bool closed_values, bool open_values, bool free_init_value, bool cost_vs_horizon, string foldername) {
-    double alpha = 0, beta = 0, gamma = 0;
-    int n = 0;
-    string trash;
-    ifstream pythonparam(pythonparam_);
-    if (pythonparam.is_open()) {
-	pythonparam >> n >> trash >> alpha >> trash >> beta >> trash >> gamma;
-	pythonparam.close();
-    }
-    else {
-	cout << "can't open parameter file from python script" << endl;
-	exit(1);
-    }
-
-    ofstream out(foldername + "parameters.txt");
-    if (out.is_open()) {
-
-	string function = "0.3 * sin(0.1 * i)";
-	
-	//need section for python configparser
-	out << "[param]" << endl;
-	out << "cost_vs_horizon = " << cost_vs_horizon << endl;
-	out << "discretization_parameter = " << n << endl;
-	out << "alpha = " << alpha << endl;
-	out << "beta = " << beta << endl;
-	out << "gamma = " << gamma << endl;
-	out << "MPC_horizon = " << MPC_horizon << endl;
-	out << "steps = " << steps << endl;
-
-	out << "eps = " << eps << endl;
-	out << "y_ref = " << y_ref << endl;
-	out << "u_ref = " << u_ref << endl;
-	out << "u_upper = " << u_upper << endl;
-	out << "u_lower = " << u_lower << endl;
-	out << "y_upper = " << y_upper << endl;
-	out << "y_lower = " << y_lower << endl;
-	out << "w_upper = " << w_upper << endl;
-	out << "w_lower = " << w_lower << endl;
-	if (dim2) {
-	    out << "boundary_right = " << boundary_right << endl;
-	    out << "boundary_left = " << boundary_left << endl;
-	    out << "boundary_top = " << boundary_top << endl;
-	    out << "boundary_bot = " << boundary_bot << endl;
-	}
-	    //change this
-	else {
-	    out << "boundary_right = " << 0.75 << endl;
-	    out << "boundary_left = " << 0.25 << endl;
-	    out << "boundary_top = " << 0 << endl;
-	    out << "boundary_bot = " << 0 << endl;
-	}
-
-	out << "dim2 = " << dim2 << endl;
-	out << "convection = " << convection << endl;
-	out << "closed_values = " << closed_values << endl;
-	out << "open_values = " << open_values << endl;
-	out << "free_init_value = " << free_init_value << endl;
-
-	out << "function = " << function << endl;
-	out << "matrix_A = " << matrix_A << endl;
-	out << "matrix_B_y = " << matrix_B_y << endl;
-	out << "matrix_B_w = " << matrix_B_w << endl;
-	out << "vec_b_u = " << vec_b_u << endl;
-	out << "vec_b_y_out = " << vec_b_y_out << endl;
-	out << "dof_x = " << dof_x << endl;
-	out << "dof_y = " << dof_y << endl;
-
-	out.close();
-    }
-    else {
-	cout << "can't open paramater file to write to" << endl;
-	exit(1);
-    }
-}
-
-
-
+ */
 /*
 void solver_test(MATRIXOP &data, int steps) {
     vector<string> solver = {"ma27", "ma57", "ma77", "ma86", "ma97", "mumps"};

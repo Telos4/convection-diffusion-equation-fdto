@@ -10,7 +10,7 @@
 ##########################################################################
 
 # CHANGEME: This should be the name of your executable
-EXE = heateq_opt
+EXE = heat
 
 # CHANGEME: Here is the name of all object files corresponding to the source
 #           code that you wrote in order to define the problem statement
@@ -36,7 +36,7 @@ CXX = g++
 CXXFLAGS = -std=c++11 -O3 -g -pipe -DNDEBUG -Wparentheses -Wreturn-type -Wcast-qual -Wall -Wpointer-arith -Wwrite-strings -Wconversion -Wno-unknown-pragmas -Wno-long-long   -DIPOPT_BUILD
 
 # additional C++ Compiler options for linking
-CXXLINKFLAGS =  -Wl,--rpath -Wl,/home/martin/CoinIpopt/build/lib 
+CXXLINKFLAGS =  -Wl,--rpath -Wl,/home/martin/CoinIpopt/build/lib
 
 # Include directories (we use the CYGPATH_W variables to allow compilation with Windows compilers)
 INCL = `PKG_CONFIG_PATH=/home/martin/CoinIpopt/build/lib64/pkgconfig:/home/martin/CoinIpopt/build/lib/pkgconfig:/home/martin/CoinIpopt/build/share/pkgconfig: pkg-config --cflags ipopt` $(ADDINCFLAGS)

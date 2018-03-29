@@ -27,6 +27,10 @@ HEAT_NLP::HEAT_NLP(MATRIXOP &data_)
 : data(data_) {
 }
 
+/*
+ * n: number of variables
+ * m: number of constraints 
+ */
 bool HEAT_NLP::get_nlp_info(Index& n, Index& m, Index& nnz_jac_g,
 	Index& nnz_h_lag, IndexStyleEnum& index_style) {
 
@@ -34,15 +38,15 @@ bool HEAT_NLP::get_nlp_info(Index& n, Index& m, Index& nnz_jac_g,
     m = data.N * data.n_y;
 
     if (data.convection) {
-	//need to compare A and B_w, always the same size?
+	//we assume that A and B_w have the same size and pattern
 	nnz_jac_g = (data.B_y_rows.size() + data.A_rows.size() + data.b_u.size() + data.n_y) * data.N;
     }
     else {
-	//jac(g) = A_eq
+	//jac(g) = A_eq, compare docu_older.pdf
 	nnz_jac_g = (data.B_y_rows.size() + data.A_rows.size() + data.b_u.size()) * data.N;
     }
 
-    //mit Q = I, R = I for no convection
+    //for the non zero entries in the hessian of the lagrange fucntion we assume that Q, R, W are unit matrices
     //don't need this when using approximation of hessian of the lagrangian with convection on
     nnz_h_lag = data.n_z;
 
@@ -58,7 +62,10 @@ bool HEAT_NLP::get_bounds_info(Index n, Number* x_l, Number* x_u,
 
     double inf = 1e19;
 
-    //initial value
+    //The initial state is calculated in the previous step.
+    //free_init_value allows the first step of the optimization to start with a 
+    //free initial value and not the reference solution (see the constructor in matrixopp.cpp.
+
     if (data.free_init_value && data.iter == 0) {
 	for (int i = 0; i < data.n_y; ++i) {
 	    x_u[i] = inf; //data.y_old[data.n_y + i];
@@ -74,17 +81,21 @@ bool HEAT_NLP::get_bounds_info(Index n, Number* x_l, Number* x_u,
 
     //state constraints in 2d
     if (data.dim2) {
-
+	//all between 0 and 1, assuming an [0,1]x[0,1] grid
 	double left = data.boundary_left;
 	double right = data.boundary_right;
 	double top = data.boundary_top;
 	double bot = data.boundary_bot;
 
-
 	for (int k = 1; k < data.N + 1; ++k) {
 	    for (int i = 0; i < data.n_y; ++i) {
+		//dof_x and dof_y give the indices of the state variables.
+		//From these we need to reconstruct the actual (x,y) position in our grid.
+		//We achieve this by dividing by our discretization parameter.
 		double x = data.dof_x[i] / data.discretization_n;
 		double y = data.dof_y[i] / data.discretization_n;
+
+		//test if the point (x,y) is in our constrain area
 		if (x >= left && x <= right && y >= bot && y <= top) {
 		    x_u[k * data.n_y + i] = data.y_upper;
 		    x_l[k * data.n_y + i] = data.y_lower;
@@ -99,7 +110,7 @@ bool HEAT_NLP::get_bounds_info(Index n, Number* x_l, Number* x_u,
 
 	//state constraints in 1d
     else {
-
+	//there are no state boundaries in the left and right quarter of the [0,1] domain
 	int left = floor(data.n_y / 4);
 	//int right = (int) (data.n_y * 3 / 4);
 
@@ -142,7 +153,14 @@ bool HEAT_NLP::get_bounds_info(Index n, Number* x_l, Number* x_u,
     //equality constraints for g
     for (int k = 0; k < data.N; ++k) {
 	for (int i = 0; i < data.n_y; ++i) {
-	    g_u[data.n_y * k + i] = g_l[data.n_y * k + i] = data.b_y[i] * eval_y_out(data.iter + k);
+
+	    //free_init_value means we want to calculate the reference solution, where we know the exact values for y_out
+	    if (data.free_init_value && data.inexact_data) {
+		g_u[data.n_y * k + i] = g_l[data.n_y * k + i] = data.b_y[i] * (eval_y_out(data.iter + k) + data.error[data.iter + k]);
+	    }
+	    else {
+		g_u[data.n_y * k + i] = g_l[data.n_y * k + i] = data.b_y[i] * eval_y_out(data.iter + k);
+	    }
 	}
     }
 
@@ -154,8 +172,11 @@ bool HEAT_NLP::get_bounds_info(Index n, Number* x_l, Number* x_u,
 double eval_y_out(int i) {
     return 0.3 * sin(0.1 * i);
 }
-//Lösung vom letzten
 
+/*
+ * The point we want to start the optimization at is the (one timestep) shifted solution from the previous step.
+ * For the uninitialized values at the end we use the last values of the previous step for a second time.
+ */
 bool HEAT_NLP::get_starting_point(Index n, bool init_x, Number* x,
 	bool init_z, Number* z_L, Number* z_U,
 	Index m, bool init_lambda,
@@ -165,8 +186,7 @@ bool HEAT_NLP::get_starting_point(Index n, bool init_x, Number* x,
     assert(init_lambda == false);
 
 
-    //use the shifted solution from the previous solution,
-    //for the uninitialized values use the last step again
+
     for (int i = 0; i < data.N * data.n_y; ++i) {
 	x[i] = data.y_old[data.n_y + i];
     }
@@ -193,6 +213,12 @@ bool HEAT_NLP::get_starting_point(Index n, bool init_x, Number* x,
     return true;
 }
 
+/*
+ * see matrixop.cpp
+ * need to set obj_value
+ * Evaluate the cost functional 
+ * J(y,u,w) = 0.5 * sum(k=0..N)[eps*(y_k-y_ref).Q.(y_k-y_ref)] + 0.5 * sum(k=0..N-1)[(u_k-u_ref.R.(u_k-u_ref) + (w_k.W.w_k)]
+ */
 bool HEAT_NLP::eval_f(Index n, const Number* x, bool new_x, Number & obj_value) {
 
     valarray<double> z(n);
@@ -204,8 +230,20 @@ bool HEAT_NLP::eval_f(Index n, const Number* x, bool new_x, Number & obj_value) 
     return true;
 }
 
-//valarray Konstruktor mit Pointer
-
+/*
+ * see matrixop.cpp
+ * need to set grad_f
+ * Evaluate the gradient of the cost functional
+ * gradJ(y,u,w) =   [eps*Q.(y_0-y_ref)	]
+ *		    [	    ...		]
+ *		    [eps*Q.(y_N-y_ref	]
+ *		    [R.(u_0-u_ref)	]
+ *		    [	    ...		]
+ *		    [R.(u_(N-1)-u_ref	]
+ *		    [W.w_0		]
+ *		    [	    ...		]
+ *		    [W.w_(N-1)		]
+ */
 bool HEAT_NLP::eval_grad_f(Index n, const Number* x, bool new_x,
 	Number * grad_f) {
 
@@ -220,6 +258,16 @@ bool HEAT_NLP::eval_grad_f(Index n, const Number* x, bool new_x,
     return true;
 }
 
+/*
+ * evaluate the constraints, equation (18) in docu_old.pdf
+ * The constant terms b_(y,out)*y_out are implemented as equality constraints for g in get_bounds_info().
+ * Split g(z) = A_eq*(y,u) + h(y,w) in the linear part A_eq*(y,u) and in the case of convection 
+ * the nonlinear part h(y,w) =	[w_0 B_w*y_1]
+ *				[     .	    ]
+ *				[w_N B_w*y_N]
+ * where y_i is the i-th state of the open loop.
+ * 
+ */
 bool HEAT_NLP::eval_g(Index n, const Number* x, bool new_x,
 	Index m, Number * g) {
 
@@ -228,20 +276,19 @@ bool HEAT_NLP::eval_g(Index n, const Number* x, bool new_x,
     for (int i = 0; i < n; ++i) {
 	z[i] = x[i];
     }
-    //this works with convection on as well. You're then looking at the matrix [A_eq, 0].
-    //Because of the 0 matrix the matrix vector multiplication works, despite the matrix
-    //having the wrong dimension. Add the non linear part afterwards
-    valarray<double> eval1 = data.matrix_vector_mult(data.A_eq_rows, data.A_eq_cols,
-	    data.A_eq_vals, z);
 
-    valarray<double> eval2(0.0, m);
+    //The dimension do not fit in case of convection, but the way the matrix vector multiplication is implemented allows us to ignore this.
+    //The convection will therefore have no effect here.
+    valarray<double> eval1 = data.matrix_vector_mult(data.A_eq_rows, data.A_eq_cols,
+	    data.A_eq_vals, z, data.N * data.n_y);
+
     //nonlinear part
+    valarray<double> eval2(0.0, m);
     if (data.convection) {
-	//valarray<double> eval2(m);
 	for (int i = 0; i < data.N; ++i) {
 	    valarray<double> temp = z[slice((i + 1) * data.n_y, data.n_y, 1)];
-	    eval2[slice(i * data.n_y, data.n_y, 1)] = z[(data.N + 1) * data.n_y + data.N * data.n_u + i]
-		    * data.matrix_vector_mult(data.B_w_rows, data.B_w_cols, data.B_w_vals, temp);
+	    double w_i = z[(data.N + 1) * data.n_y + data.N * data.n_u + i];
+	    eval2[slice(i * data.n_y, data.n_y, 1)] = w_i * data.matrix_vector_mult(data.B_w_rows, data.B_w_cols, data.B_w_vals, temp, data.n_y);
 	}
     }
 
@@ -252,13 +299,20 @@ bool HEAT_NLP::eval_g(Index n, const Number* x, bool new_x,
     return true;
 }
 
-
-//copy routine from A_eq and change
-//works only if A and B_w have the same pattern.
-//enough for testing for now
-//implement general case later
-//as long as A and B_w should always have the same pattern, because
-//need to change nnz_jacobian in get_nlp_info as well
+/*
+ * jac_g = 
+ * [-B_y    A+w_0*B_w					    -b_u			B_w*y_1				    ]
+ * [	    -B_y	A+w_1*B_w				    -b_u			    B_w*y_2		    ]
+ * [			       ..					..				    ..		    ]
+ * [				    ..					    ..					..	    ]
+ * [				    -B_y    A+w_(N-1)*B_w			-b_u				    B_w*y_N ]
+ * 
+ * 
+ * Assumption: A and B_w have the same pattern
+ * 
+ * The idea is the same as the creation of A_eq in matrixop.cpp.
+ * The only new thing here are the w_i*B_w and B_w*y_i terms
+ */
 
 bool HEAT_NLP::eval_jac_g(Index n, const Number* x, bool new_x,
 	Index m, Index nele_jac, Index* iRow,
@@ -286,7 +340,7 @@ bool HEAT_NLP::eval_jac_g(Index n, const Number* x, bool new_x,
 			++countB_y;
 
 		    }
-		    //change this part
+
 		    while (countA != size_A && data.A_rows[countA] == k) {
 			iRow[count] = i * data.n_y + k;
 			jCol[count] = (i + 1) * data.n_y + data.A_cols[countA];
@@ -319,7 +373,7 @@ bool HEAT_NLP::eval_jac_g(Index n, const Number* x, bool new_x,
 		for (int k = 0; k < data.n_y; ++k) {
 		    temp[k] = x[(i + 1) * data.n_y + k];
 		}
-		valarray<double> y = data.matrix_vector_mult(data.B_w_rows, data.B_w_cols, data.B_w_vals, temp);
+		valarray<double> y = data.matrix_vector_mult(data.B_w_rows, data.B_w_cols, data.B_w_vals, temp, data.n_y);
 
 
 		for (int k = 0; k < data.n_y; ++k) {
@@ -328,7 +382,7 @@ bool HEAT_NLP::eval_jac_g(Index n, const Number* x, bool new_x,
 			++count;
 			++countB_y;
 		    }
-		    //change this part
+
 		    while (countA != size_A && data.A_rows[countA] == k) {
 			values[count] = data.A_vals[countA] + w * data.B_w_vals[countA];
 			++count;
@@ -409,11 +463,92 @@ void HEAT_NLP::finalize_solution(SolverReturn status,
 	const IpoptData* ip_data,
 	IpoptCalculatedQuantities * ip_cq) {
 
+    /*
+     * The control and convection term for the next time step are calculated with exact boundary data. 
+     * In the case of inexcact boundary data we need to recalculate the resulting state.
+     * The formula can be found in docu_old.pdf (10). 
+     * A*y_(k+1) + w_k*B_w.y_(k+1) = B_y.y_k + b_u*u_k + b_y*y_(out,k) , 
+     * with (.) as matrix vector multiplication and (*) as scalar multiplication
+     * 
+     * save this new state in y_new. If inexact_data is off, y_new contains the new state from the open loop 
+     * 
+     * The linear system is solved with Eigen: https://eigen.tuxfamily.org/dox/group__TutorialSparse.html
+     * Currently a sparse LU decompositoin is used, because we have a one dimensional small problem
+     */
+    valarray<double> y_new(data.n_y);
+    if (data.inexact_data && !data.free_init_value) {
+	double u = x[(data.N + 1) * data.n_y];
 
+	//I don't know why I need this minus, but without it the convection works in the wrong direction.
+	//This is especially strange because this minus is not needed in eval_g() and eval_jac_g
+	//And it shouldn't be needed because the direction of the convection is set when creating B_w in heat.py
+	double w = -x[(data.N + 1) * data.n_y + data.N * data.n_u];
+	double y_out = eval_y_out(data.iter) + data.error[data.iter];
 
-    //save result for next optimization step
+	typedef Eigen::Triplet<double> T;
+
+	std::vector<T> tripletList;
+	tripletList.reserve(2 * data.A_rows.size());
+
+	for (int i = 0; i < data.A_rows.size(); ++i) {
+	    tripletList.push_back(T(data.A_cols[i], data.A_rows[i], data.A_vals[i]));
+	}
+	for (int i = 0; i < data.B_w_rows.size(); ++i) {
+	    tripletList.push_back(T(data.B_w_cols[i], data.B_w_rows[i], w * data.B_w_vals[i]));
+	}
+
+	Eigen::SparseMatrix<double> mat(data.n_y, data.n_y);
+	mat.setFromTriplets(tripletList.begin(), tripletList.end());
+
+	Eigen::VectorXd b(data.n_y), y;
+
+	valarray<double> y_k(data.n_y);
+
+	for (int i = 0; i < data.n_y; ++i) {
+	    y_k[i] = x[i];
+	}
+
+	valarray<double> rhs = data.matrix_vector_mult(data.B_y_rows, data.B_y_cols, data.B_y_vals, y_k, data.n_y);
+
+	for (int i = 0; i < data.n_y; ++i) {
+	    rhs[i] += data.b_u[i] * u + data.b_y[i] * y_out;
+	    b[i] = rhs[i];
+	}
+
+	Eigen::SparseLU<Eigen::SparseMatrix<double> > solver;
+	//compute LU decomposition
+	solver.compute(mat);
+	if (solver.info() != Eigen::Success) {
+	    cout << "decomposition failed, in finalize_solution -> Eigen" << endl;
+	    exit(1);
+	}
+	//solve system
+	y = solver.solve(b);
+	if (solver.info() != Eigen::Success) {
+	    cout << "solving failed, in finalize_solution -> Eigen" << endl;
+	    exit(1);
+	}
+
+	for (int i = 0; i < data.n_y; ++i) {
+	    y_new[i] = y[i];
+	}
+    }
+
+    else {
+	for (int i = 0; i < data.n_y; ++i) {
+	    y_new[i] = x[data.n_y + i];
+	}
+    }
+
+    //save results for next optimization step
     for (int i = 0; i < (data.N + 1) * data.n_y; ++i) {
 	data.y_old[i] = x[i];
+    }
+    //set first state in the next step
+    if (data.inexact_data) {
+	for (int i = 0; i < data.n_y; ++i) {
+	    data.y_old[data.n_y + i] = y_new[i];
+	}
     }
     for (int i = 0; i < data.N * data.n_u; ++i) {
 	data.u_old[i] = x[(data.N + 1) * data.n_y + i];
@@ -428,7 +563,7 @@ void HEAT_NLP::finalize_solution(SolverReturn status,
     //closed loop cost
     valarray<double> x_new(data.n_y);
     for (int i = 0; i < data.n_y; ++i) {
-	x_new[i] = x[data.n_y + i];
+	x_new[i] = y_new[i];
     }
     valarray<double> u_new(data.n_u);
     for (int i = 0; i < data.n_u; ++i) {
@@ -446,13 +581,44 @@ void HEAT_NLP::finalize_solution(SolverReturn status,
 	data.closed_loop_cost += 0.5 * data.vec_W_vec(w_new);
     }
 
+    //hypothetical closed loop cost for the reference solution
+    if (data.free_init_value && data.closed_values) {
+	
+	ofstream ofs_cost(data.foldername + "closedloop_cost.txt", ofstream::app);
+	
+	double closedloop_reference = 0;
+	
+	for (int k = 0; k < data.N; ++k) {
+	    valarray<double> y(data.n_y);
+	    for (int i = 0; i < data.n_y; ++i) {
+		y[i] = x[k * data.n_y + i];
+	    }
+	    valarray<double> u(data.n_u);
+	    for (int i = 0; i < data.n_u; ++i) {
+		u[i] = x[(data.N + 1) * data.n_y + k * data.n_u + i];
+	    }
 
+	    closedloop_reference += data.eps * 0.5 * data.vec_Q_vec(y, data.y_ref) + 0.5 * data.vec_R_vec(u, data.u_ref);
 
-    //closed loop values
+	    if (data.convection) {
+		valarray<double> w(data.n_w);
+		for (int i = 0; i < data.n_w; ++i) {
+		    w[i] = x[(data.N + 1) * data.n_y + data.N * data.n_u + k * data.n_u + i];
+		}
+
+		closedloop_reference += 0.5 * data.vec_W_vec(w);
+	    }
+	    ofs_cost << closedloop_reference << endl;
+
+	}
+
+	ofs_cost.close();
+    }
+
+    //write closed loop values
     if (data.closed_values) {
 	ofstream ofs_y(data.foldername + "closedloop_y.txt", ofstream::app);
 	ofstream ofs_u(data.foldername + "closedloop_u.txt", ofstream::app);
-	ofstream ofs_cost(data.foldername + "closedloop_cost.txt", ofstream::app);
 
 	//write initial values
 	if (data.iter == 0) {
@@ -481,7 +647,7 @@ void HEAT_NLP::finalize_solution(SolverReturn status,
 	    valarray<double> temp(data.n_y);
 
 	    for (int i = 0; i < data.n_y; ++i) {
-		temp[data.order[i]] = x[data.n_y + i];
+		temp[data.order[i]] = y_new[i];
 	    }
 	    for (int i = 0; i < data.n_y; ++i) {
 		ofs_y << temp[i] << " ";
@@ -489,9 +655,10 @@ void HEAT_NLP::finalize_solution(SolverReturn status,
 	    ofs_y << endl;
 	}
 
+	//1d
 	else {
 	    for (int i = 0; i < data.n_y; ++i) {
-		ofs_y << x[data.n_y + i] << " ";
+		ofs_y << y_new[i] << " ";
 	    }
 	    ofs_y << endl;
 	}
@@ -502,11 +669,15 @@ void HEAT_NLP::finalize_solution(SolverReturn status,
 	}
 	ofs_u << endl;
 
-	ofs_cost << data.closed_loop_cost << endl;
+	//the hypothetical closed loop cost for the reference solution is already written above
+	if (!data.free_init_value) {
+	    ofstream ofs_cost(data.foldername + "closedloop_cost.txt", ofstream::app);
+	    ofs_cost << data.closed_loop_cost << endl;
+	    ofs_cost.close();
+	}
 
 	ofs_y.close();
 	ofs_u.close();
-	ofs_cost.close();
 
 
 
@@ -528,7 +699,7 @@ void HEAT_NLP::finalize_solution(SolverReturn status,
 	ofstream ofs_y_open(filename_y, ofstream::trunc);
 	ofstream ofs_u_open(filename_u, ofstream::trunc);
 
-
+	//write state in 2d
 	if (data.dim2) {
 	    valarray<double> temp((data.N + 1) * data.n_y);
 
@@ -546,6 +717,7 @@ void HEAT_NLP::finalize_solution(SolverReturn status,
 	    }
 	}
 
+	    //write state in 1d
 	else {
 	    for (int k = 0; k < data.N + 1; ++k) {
 		for (int i = 0; i < data.n_y; ++i) {
@@ -555,9 +727,7 @@ void HEAT_NLP::finalize_solution(SolverReturn status,
 	    }
 	}
 
-
-
-
+	//write u
 	for (int k = 0; k < data.N; ++k) {
 	    for (int i = 0; i < data.n_u; ++i) {
 		ofs_u_open << x[(data.N + 1) * data.n_y + k * data.n_u + i] << endl;
@@ -567,6 +737,7 @@ void HEAT_NLP::finalize_solution(SolverReturn status,
 	ofs_y_open.close();
 	ofs_u_open.close();
 
+	//write w
 	if (data.convection) {
 	    string filename_w = data.foldername + "openloop_w" + std::to_string(data.iter) + ".txt";
 	    ofstream ofs_w_open(filename_w, ofstream::trunc);

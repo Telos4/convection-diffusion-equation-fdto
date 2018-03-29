@@ -84,6 +84,7 @@ class SimulationResult:
             self.n_disc = config.getint('param', 'discretization_parameter')
             self.L = config.getint('param', 'steps')
             self.N = config.getint('param', 'MPC_horizon')
+
             self.alpha = config.getfloat('param', 'alpha')
             self.beta = config.getfloat('param', 'beta')
             self.y_ref = config.getfloat('param', 'y_ref')
@@ -99,8 +100,11 @@ class SimulationResult:
             self.boundary_left = config.getfloat('param', 'boundary_left')
             self.boundary_top = config.getfloat('param', 'boundary_top')
             self.boundary_bot = config.getfloat('param', 'boundary_bot')
+            self.std_dev = config.getfloat('param', 'std_dev')
+
             self.dim2 = config.getboolean('param', 'dim2')
             self.convection = config.getboolean('param', 'convection')
+            self.inexact_data = config.getboolean('param', 'inexact_data')
             self.function = config.get('param', 'function')
         else:
             print("can't find parameters.txt")
@@ -408,6 +412,10 @@ def plot_cumulative_closed_loop_cost(results, reference, output_file='test.pdf')
         domain = np.arange(0.0, r.L)
         ax.plot(domain, r.closed_loop_cost, label='N='+str(r.N), linewidth=linewidth_global)
 
+    L = results[0].L
+    domain = np.arange(0.0, L)
+    ax.plot(domain, reference.closed_loop_cost[:L], label='N='+str(reference.N + reference.L), linewidth=linewidth_global)
+
     plt.rc('text', usetex=True)
     plt.rc('font', family='serif')
     plt.legend(loc='best')
@@ -466,21 +474,35 @@ def plot_turnpike(results, reference, output_file='test.pdf'):
     plt.savefig(output_file)
     plt.show()
 
-def run_simulations(Ns, L, dim, exec_folder, result_folder, prefix="", ref=False):
+def run_simulations(Ns, L, dim, exec_folder, result_folder, prefix="", ref=False, inexact_data = False, std_dev = 0):
     # run simulations
+
     for N in Ns:
         folder_prefix = prefix + "N=" + str(N) + "_L=" + str(L) + "_"
         if dim == 1:
-            if ref:
-                call([exec_folder + "heat", "-c", "-L " + str(L), "-N" + str(N), "--ov", "--cv", "--matA=A.mtx", "--matB_w=B_w.mtx",
-                      "--matB_y=B_y.mtx", "--b_u=b_u.txt", "--b_y_out=b_y_out.txt", "--result_folder=" + result_folder,
-                      "--result_folder_prefix=" + folder_prefix, "--pythonparam=python_parameters.txt", "--dof_x=dof_x.txt", "--dof_y=dof_y.txt", "--output=0", "--fi"])
+            if inexact_data:
+                if ref:
+                    call([exec_folder + "heat", "-c", "-L " + str(L), "-N" + str(N), "--ov", "--cv", "--matA=A.mtx", "--matB_w=B_w.mtx",
+                          "--matB_y=B_y.mtx", "--b_u=b_u.txt", "--b_y_out=b_y_out.txt", "--result_folder=" + result_folder,
+                          "--result_folder_prefix=" + folder_prefix, "--pythonparam=python_parameters.txt", "--dof_x=dof_x.txt", "--dof_y=dof_y.txt", "--output=0", "--fi", "--id", "--std_dev=" + str(std_dev)])
+                else:
+                    call([exec_folder + "heat", "-c", "-L " + str(L), "-N" + str(N), "--ov", "--cv", "--matA=A.mtx", "--matB_w=B_w.mtx",
+                          "--matB_y=B_y.mtx", "--b_u=b_u.txt", "--b_y_out=b_y_out.txt", "--result_folder=" + result_folder, "--output=0",
+                          "--result_folder_prefix=" + folder_prefix,
+                          "--y_lower=-0.15", "--y_upper=0.15",
+                          "--pythonparam=python_parameters.txt", "--id", "--std_dev=" + str(std_dev)])
             else:
-                call([exec_folder + "heat", "-c", "-L " + str(L), "-N" + str(N), "--ov", "--cv", "--matA=A.mtx", "--matB_w=B_w.mtx",
-                      "--matB_y=B_y.mtx", "--b_u=b_u.txt", "--b_y_out=b_y_out.txt", "--result_folder=" + result_folder,
-                      "--result_folder_prefix=" + folder_prefix,
-                      "--y_lower=-0.15", "--y_upper=0.15",
-                      "--pythonparam=python_parameters.txt"])
+                if ref:
+                    call([exec_folder + "heat", "-c", "-L " + str(L), "-N" + str(N), "--ov", "--cv", "--matA=A.mtx", "--matB_w=B_w.mtx",
+                          "--matB_y=B_y.mtx", "--b_u=b_u.txt", "--b_y_out=b_y_out.txt", "--result_folder=" + result_folder,
+                          "--result_folder_prefix=" + folder_prefix, "--pythonparam=python_parameters.txt", "--dof_x=dof_x.txt", "--dof_y=dof_y.txt", "--output=0", "--fi"])
+                else:
+                    call([exec_folder + "heat", "-c", "-L " + str(L), "-N" + str(N), "--ov", "--cv", "--matA=A.mtx", "--matB_w=B_w.mtx",
+                          "--matB_y=B_y.mtx", "--b_u=b_u.txt", "--b_y_out=b_y_out.txt", "--result_folder=" + result_folder, "--output=0",
+                          "--result_folder_prefix=" + folder_prefix,
+                          "--y_lower=-0.15", "--y_upper=0.15",
+                          "--pythonparam=python_parameters.txt"])
+
 
         elif dim == 2:
             if ref:
@@ -495,21 +517,24 @@ def run_simulations(Ns, L, dim, exec_folder, result_folder, prefix="", ref=False
 
 if __name__ == "__main__":
     exec_folder = 'cpp/'#cmake-build-debug/'  # folder with executable
-    result_folder = 'results5/'              # folder where results are stored
+    result_folder = 'results99/'              # folder where results are stored
 
     sim = True
+    #sim = False
     dim = 1
+    inexact_data = True
+    std_dev = 0.02
     if sim == True:
         # generate results
         min_N = 40
-        max_N = 40
+        max_N = 20
         #Ns = range(min_N,max_N+1)
-        Ns = [20]
+        Ns = [2,5,10,20]
         L = 100
-        run_simulations(Ns, L, dim, exec_folder, result_folder, prefix="mpc_")
+        run_simulations(Ns, L, dim, exec_folder, result_folder, prefix="mpc_", inexact_data = inexact_data, std_dev = std_dev)
 
         # reference solution (= open loop simulation with long horizon)
-        #run_simulations([max_N + L], 1, dim, exec_folder, result_folder, prefix="ref_", ref=True)
+        run_simulations([max_N + L], 1, dim, exec_folder, result_folder, prefix="ref_", ref=True, inexact_data = inexact_data, std_dev = std_dev)
 
         # overtaking solution (= open loop simulation with long horizon)
         #run_simulations([max_N + L], 1, dim, exec_folder, result_folder, prefix="opt_")
@@ -531,8 +556,8 @@ if __name__ == "__main__":
     mpc_list = sorted(mpc_list, key=lambda r: r.N)  # sort by horizon length
 
     # reference trajectory
-    #ref_result_folder = map(str,list(p.glob('ref_*')))[0]
-    #ref_result = SimulationResult(ref_result_folder)
+    ref_result_folder = map(str,list(p.glob('ref_*')))[0]
+    ref_result = SimulationResult(ref_result_folder)
 
     # overtaking optimal trajectory
     #opt_result_folder = map(str, list(p.glob('opt_*')))[0]
@@ -554,15 +579,14 @@ if __name__ == "__main__":
     #plot_closed_loop_convergence(mpc_list, ref_result, output_file='figures/trajectory_convergence.pdf')
 
     # create plot for cumulative closed loop cost
-    #plot_cumulative_closed_loop_cost(mpc_list, ref_result, output_file='figures/cumulative_cost.pdf')
+    plot_cumulative_closed_loop_cost(mpc_list, ref_result, output_file='figures2/cumulative_cost.pdf')
 
     #unc_result.plot_closed_loop('figures/uncontrolled.mp4', L=100)
 
     # create videos of mpc closed loop simulations
     for r in mpc_list:
-        r.plot_closed_loop('figures/heat_N={}.mp4'.format(r.N), L=100)#, reference=opt_result)
+        r.plot_closed_loop('figures2/heat_N={}_2_stddev={}.mp4'.format(r.N, r.std_dev), L=100, reference=ref_result)
         #r.plot_open_loop('figures/ol_heat_N={}.mp4'.format(r.N), k=0, reference=ref_result)
-
 
     pass
 

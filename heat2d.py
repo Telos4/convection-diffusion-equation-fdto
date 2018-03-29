@@ -10,7 +10,7 @@ from collections import OrderedDict
 set_log_level(WARNING)
 
 # Prepare a mesh
-n = 30
+n = 20
 #mesh = UnitIntervalMesh(100)
 mesh = UnitSquareMesh(n,n)
 
@@ -18,7 +18,7 @@ mesh = UnitSquareMesh(n,n)
 k = Constant(1e-2)
 
 # MPC horizon length
-N = 10
+N = 30
 
 # boundary heat conductivity parameters
 alpha = Constant(1.0)

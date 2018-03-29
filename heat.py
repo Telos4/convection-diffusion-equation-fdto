@@ -17,7 +17,7 @@ mesh = UnitIntervalMesh(n)
 k = Constant(1e-2)
 
 # MPC horizon length
-N = 10
+N = 20
 
 # boundary heat conductivity parameters
 alpha = Constant(1.0)
